@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="field" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#167F70"/><stop offset="1" stop-color="#064D48"/>
+    </linearGradient>
+    <linearGradient id="mint" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#E1F9E8"/><stop offset="1" stop-color="#B6E9D4"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#FFE8BF"/><stop offset="1" stop-color="#ECC28C"/>
+    </linearGradient>
+    <clipPath id="card"><rect x="297" y="194.5" width="430" height="635" rx="95"/></clipPath>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#field)"/>
+  <g transform="rotate(12 512 512)">
+    <rect x="297" y="194.5" width="430" height="635" rx="95" fill="url(#mint)"/>
+    <path d="M565 194.5 Q380 500 450 829.5 H727 V194.5Z" fill="url(#sun)" clip-path="url(#card)"/>
+  </g>
+</svg>

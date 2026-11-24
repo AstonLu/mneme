@@ -1,0 +1,717 @@
+<title>光疊手機模擬</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one phone centered on a quiet stage, switches above it. Phone contents keep one light look. */
+:root{--stage:#e6e7ea;--ink:#1c1c1e;--quiet:#55565c;--chip:#fff;--focus:#0062cc;--ui:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--stage:#17181b;--ink:#f2f2f7;--quiet:#b3b4ba;--chip:#34353a;--focus:#64b5ff;color-scheme:dark}}
+:root[data-theme="dark"]{--stage:#17181b;--ink:#f2f2f7;--quiet:#b3b4ba;--chip:#34353a;--focus:#64b5ff;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--stage);color:var(--ink);font:15px/1.5 var(--ui);display:flex;flex-direction:column;align-items:center;gap:12px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow-x:hidden}
+button,textarea{font:inherit;color:inherit}
+button{border:0;background:none;padding:0;cursor:pointer}
+p,h1,h2{margin:0}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.switches{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 24px;flex:none}
+.group{display:flex;align-items:center}
+.group span{color:var(--quiet);margin-right:6px;font-size:13px}
+.group button{min-height:44px;padding:0 12px;border-radius:22px;color:var(--quiet)}
+.group [aria-pressed=true]{background:var(--chip);color:var(--ink);font-weight:600}
+.fit{flex:none;position:relative}
+.frame{position:absolute;left:0;top:0;width:405px;height:864px;padding:6px;border-radius:61px;background:#0b0b0c;box-shadow:0 0 0 .5px #8b8d92,0 0 0 2px #c9cbd0,0 30px 60px -24px rgba(0,0,0,.5);transform-origin:0 0}
+.key{position:absolute;width:3px;background:#aeb0b5;border-radius:2px}
+.screen{color-scheme:light;position:relative;width:393px;height:852px;border-radius:55px;overflow:hidden;background:#f6f5f4;color:#1c1c1e;isolation:isolate;--safe:34px;--top:59px}
+.screen.safari{--safe:86px}
+.status{position:absolute;z-index:40;inset:0 0 auto;height:59px;background:#f6f5f4;display:flex;justify-content:space-between;align-items:center;padding:6px 32px 0 50px;font-weight:600;font-size:17px;pointer-events:none}
+.status b{position:absolute;left:50%;top:11px;width:126px;height:37px;margin-left:-63px;border-radius:19px;background:#000}
+.status svg{width:66px;height:14px}
+.home{position:absolute;z-index:50;left:50%;bottom:8px;width:139px;height:5px;margin-left:-69.5px;border-radius:3px;background:#1c1c1e;pointer-events:none}
+.bar{position:absolute;z-index:45;left:22px;right:22px;bottom:26px;height:48px;display:none;gap:8px;pointer-events:none;font-size:15px}
+.safari .bar{display:flex}
+.bar i{flex:none;width:48px;border-radius:24px;display:grid;place-items:center;font-style:normal}
+.bar span{flex:1;border-radius:24px;display:grid;place-items:center}
+.bar i,.bar span{background:rgba(250,250,250,.72);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);box-shadow:0 0 0 .5px rgba(60,60,67,.16),0 6px 18px -8px rgba(20,24,32,.35)}
+.page{position:absolute;inset:var(--top) 0 0;overflow:hidden;--q:0;--r:0;--l:0;isolation:isolate}
+.light{position:absolute;inset:0;isolation:isolate;overflow:hidden}
+.light div{position:absolute;inset:-80px;background-size:cover;background-position:center;opacity:.9}
+.light::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(#f6f5f4,rgba(255,255,255,.25) 16px,rgba(255,255,255,.08) 45%,rgba(255,255,255,.3))}
+.deck{position:absolute;inset:12px 20px calc(var(--safe) + 64px)}
+.card{position:absolute;inset:0;overflow:hidden;border-radius:30px;background:#fff;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:grab;will-change:transform;box-shadow:0 0 0 .5px rgba(255,255,255,.7),0 2px 6px rgba(20,24,32,.06),0 26px 50px -24px rgba(20,24,32,.5)}
+.ambient{position:absolute;inset:-50px;background-size:cover;background-position:center;filter:blur(36px) saturate(1.2)}
+.ambient::after{content:"";position:absolute;inset:0;background:rgba(255,255,255,.68)}
+.text .ambient{filter:none;inset:0}
+.text .ambient::after{background:rgba(255,255,255,.35)}
+.image .ambient::after{background:rgba(255,255,255,.12)}
+.scroll{position:absolute;inset:0;padding-bottom:40px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;display:flex;flex-direction:column}
+.scroll::before,.scroll::after{content:"";margin:auto}
+.card img{width:100%;min-height:0;flex:0 1 auto;object-fit:contain;pointer-events:none}
+.card p{flex:none;padding:22px 26px;font-size:17px;line-height:1.75;white-space:pre-line;overflow-wrap:anywhere}
+.text p{padding:30px}
+.short p{font-size:28px;font-weight:600;line-height:1.5}
+.both p{font-size:20px;font-weight:600;line-height:1.55}
+.sheen{position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 .5px 0 rgba(255,255,255,.95),inset 0 0 0 .5px rgba(255,255,255,.4);background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.3) 50%,transparent 62%) no-repeat calc(50% - var(--x,0)*130%) 0/260% 100%;opacity:calc(var(--r) + var(--l))}
+.edge{position:absolute;z-index:8;top:0;bottom:0;width:20%;pointer-events:none;opacity:0}
+.er{right:0;opacity:var(--r);background:radial-gradient(ellipse at 100% 45%,rgba(255,143,92,.8),rgba(255,143,92,0) 70%)}
+.el{left:0;opacity:var(--l);background:radial-gradient(ellipse at 0 45%,rgba(94,112,150,.6),rgba(94,112,150,0) 70%)}
+.yes path{fill:#e2552a;fill-opacity:var(--r)}
+.yes{transform:scale(calc(1 + var(--r)*.2 - var(--l)*.12))}
+.no{transform:scale(calc(1 + var(--l)*.2 - var(--r)*.12))}
+.settle .edge,.settle .yes,.settle .no,.settle .sheen{transition:opacity 240ms,transform 260ms cubic-bezier(.22,1,.36,1)}
+/* Full view: the page itself is the screen, for swiping on a real phone */
+.full{padding:0;gap:0}
+.full .fit{flex:1;min-height:0;width:100%!important;max-width:480px;height:auto!important}
+.full .frame{inset:0;width:auto;height:auto;padding:0;border-radius:0;box-shadow:none;transform:none!important}
+.full .screen{width:100%;height:100%;border-radius:0}
+.full .screen,.full .screen.safari{--top:0px;--safe:env(safe-area-inset-bottom,0px)}
+.full .status,.full .home,.full .safari .bar,.full .key,.full .env{display:none}
+@media (prefers-reduced-motion:reduce){.yes,.no{transform:none!important}.settle *{transition:none!important}}
+
+/* Glass: clear center, bright rim, refraction shade. It overlaps the card so there is something to see through. */
+.glass{position:relative;border-radius:50%;display:grid;place-items:center;color:#2c2c2e;isolation:isolate;overflow:hidden;
+background:linear-gradient(150deg,rgba(255,255,255,.5),rgba(255,255,255,.1) 45%,rgba(255,255,255,.3));
+-webkit-backdrop-filter:blur(7px) saturate(190%) brightness(1.1);backdrop-filter:blur(7px) saturate(190%) brightness(1.1);
+box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.95),inset -1.5px -1.5px 1px rgba(255,255,255,.6),inset 0 0 0 .5px rgba(255,255,255,.75),inset 0 -9px 14px -8px rgba(255,255,255,.65),inset 5px 8px 14px -10px rgba(40,50,70,.3),0 0 0 .5px rgba(40,50,70,.12),0 12px 24px -10px rgba(20,24,32,.45)}
+.glass::before{content:"";position:absolute;z-index:-1;left:14%;right:14%;top:4%;height:40%;border-radius:50%;background:linear-gradient(rgba(255,255,255,.75),rgba(255,255,255,0))}
+.glass svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.glass{background:rgba(255,255,255,.84)}}
+.page .corner{position:absolute;z-index:10;bottom:calc(var(--safe) - 10px);width:50px;height:50px}
+.corner.add{left:18px}.corner.all{right:18px}
+.page .no,.page .yes{position:absolute;z-index:10;bottom:calc(var(--safe) + 18px);left:50%;width:62px;height:62px}
+.no{margin-left:-76px}.yes{margin-left:14px;color:#a8401c}
+.page .no svg,.page .yes svg{width:27px;height:27px}
+.why{height:20px;color:var(--quiet);font-size:13px}
+.full .why{display:none}
+/* Composed card: a fixed 2:3 sheet, so a layout looks the same everywhere */
+.art{position:relative;width:100%;aspect-ratio:2/3;flex:none;overflow:hidden;container-type:inline-size}
+.card .art img,.art img{position:absolute;max-width:none;height:auto;transform:translate(-50%,-50%);border-radius:0}
+.card .art p,.art p{position:absolute;width:86%;padding:0;transform:translate(-50%,-50%);text-align:center;font-weight:600;line-height:1.5;white-space:pre-line;overflow-wrap:anywhere;font-size:calc(var(--size)*1cqw)}
+.art p span{-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.art p.ink{color:#1c1c1e}.art p.paper{color:#fff}
+.art p.plate span{padding:.12em .4em;border-radius:.3em}
+.art p.ink.plate span{background:rgba(255,255,255,.78)}.art p.paper.plate span{background:rgba(0,0,0,.5)}
+/* Views */
+.view{position:absolute;z-index:20;inset:0;background:#f6f5f4;overflow:hidden;display:flex;flex-direction:column}
+.view header{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:60px;padding:4px 20px}
+.view h2{font-size:26px}
+.body{flex:1;min-height:0;overflow-y:auto;padding:4px 20px calc(var(--safe) + 64px);scrollbar-width:none}
+.pill{border-radius:24px;display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 16px;font-weight:600}
+.pill svg{width:19px;height:19px}.pill::before{border-radius:20px;left:6%;right:6%}
+.round{width:46px;height:46px;flex:none}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 12px}
+.tile{display:block;text-align:left;width:100%;border-radius:18px}
+.thumb{display:grid;place-items:center;aspect-ratio:4/5;border-radius:18px;overflow:hidden;background:#ecebe9 center/cover;font-size:16px;line-height:1.5;padding:16px}
+.thumb.pic{padding:0}.thumb>img{width:100%;height:100%;object-fit:contain}
+.thumb .art{width:auto;height:100%}
+.meta{display:flex;justify-content:space-between;padding:6px 4px 0;font-size:13px;color:#5c5c61;font-variant-numeric:tabular-nums}
+.meta b{color:#1c1c1e}
+.menu{position:absolute;z-index:5;top:58px;right:20px;width:216px;border-radius:22px;padding:6px;background:rgba(255,255,255,.82);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);box-shadow:inset 1px 1px 0 #fff,0 0 0 .5px rgba(40,50,70,.14),0 18px 40px -14px rgba(20,24,32,.45)}
+.menu button{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:44px;padding:0 14px;border-radius:16px;font-size:16px}
+.menu [aria-checked=true]{font-weight:600;background:rgba(118,118,128,.12)}
+.menu hr{border:0;border-top:.5px solid rgba(60,60,67,.2);margin:6px 8px}
+.hero{width:232px;margin:0 auto 22px;border-radius:24px;overflow:hidden;box-shadow:0 22px 44px -22px rgba(20,24,32,.5)}
+.hero .thumb{border-radius:0}
+.big{display:flex;align-items:baseline;gap:8px;font-variant-numeric:tabular-nums}
+.big b{font-size:44px;line-height:1.1;font-weight:700}
+.ratio{display:flex;gap:3px;height:10px;margin:10px 0 8px}
+.ratio i{border-radius:5px;min-width:0}.ratio .a{background:#d9693f}.ratio .z{background:#a9b1bf}
+.sides{display:flex;justify-content:space-between;font-variant-numeric:tabular-nums}
+dl{margin:22px 0;display:grid;grid-template-columns:auto 1fr;gap:0;font-variant-numeric:tabular-nums}
+dt,dd{margin:0;padding:11px 0;border-top:.5px solid rgba(60,60,67,.2)}
+dt{color:#5c5c61}dd{text-align:right}
+.danger{width:100%;min-height:50px;border-radius:25px;background:rgba(118,118,128,.1);color:#b3261e;font-weight:600}
+.scrim{position:absolute;z-index:30;inset:0;background:rgba(0,0,0,.3)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:28px 28px 0 0;padding:26px 20px calc(var(--safe) + 12px);display:grid;gap:10px}
+.sheet p{font-size:17px;font-weight:600;text-align:center;margin-bottom:8px}
+.sheet button{min-height:50px;border-radius:25px;background:rgba(118,118,128,.12);font-weight:600}
+.sheet .go{background:#b3261e;color:#fff}
+.toast{position:absolute;z-index:35;left:50%;top:14px;transform:translateX(-50%);padding:9px 18px;border-radius:20px;background:#1c1c1e;color:#fff;font-weight:600;white-space:nowrap}
+.empty{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:14px;font-size:20px;font-weight:600}
+/* Editor */
+.canvas{width:220px;margin:0 auto;border-radius:22px;overflow:hidden;background:#fff center/cover;box-shadow:0 18px 36px -20px rgba(20,24,32,.5);touch-action:none;user-select:none;-webkit-user-select:none}
+.canvas .art img,.canvas .art p{cursor:move;touch-action:none}
+.canvas .hint{position:absolute;inset:0;display:grid;place-content:center;color:#5c5c61}
+.canvas .longtext{height:330px;overflow-y:auto;padding:18px;font-size:13px;white-space:pre-line}
+.canvas .on{outline:1.5px dashed rgba(60,60,67,.55);outline-offset:3px}
+.tools{display:grid;gap:10px;margin-top:16px}
+.tools .row{display:flex;align-items:center;gap:10px}
+.tools label.slide{display:grid;grid-template-columns:72px 1fr;align-items:center;min-height:36px}
+.tools input[type=range]{width:100%;accent-color:#48484c;height:28px}
+.tools textarea{display:block;width:100%;height:68px;padding:10px 14px;border:1px solid #c7c7cc;border-radius:16px;font-size:17px;background:#fff;color:#1c1c1e;resize:none}
+.chip{min-height:44px;padding:0 16px;border-radius:22px;background:rgba(118,118,128,.12);font-weight:600;display:inline-flex;align-items:center;cursor:pointer}
+.chip[aria-pressed=true]{background:#1c1c1e;color:#fff}
+.chip:focus-within{outline:3px solid #0062cc;outline-offset:2px}
+.chip input{position:absolute;opacity:0;width:1px;height:1px}
+.err{color:#b3261e}
+.primary{min-height:50px;width:100%;border-radius:25px;background:#1c1c1e;color:#fff;font-weight:600}
+.primary:disabled{background:#8a8a8e}
+.view .foot{flex:none;padding:8px 20px calc(var(--safe) + 4px)}
+.preview{background:none;overflow:hidden}
+.preview .light{z-index:-1}
+.preview .deck .card{cursor:default}
+.preview .acts{position:absolute;left:0;right:0;bottom:calc(var(--safe) + 22px);display:flex;justify-content:center;gap:14px}
+.acts .pill{height:54px;padding:0 24px;border-radius:27px}
+.view.preview{background:#f6f5f4}
+.art p,.short p{text-wrap:balance}
+</style>
+<div class="switches">
+  <div class="group"><button id="f1" data-frame="on">iPhone 15</button><button id="f2" data-frame="off">滿版</button></div>
+  <div class="group env"><button id="e2" data-env="home">加到主畫面</button><button id="e1" data-env="safari">Safari 分頁</button></div>
+</div>
+<p class="why" aria-live="polite"></p>
+<div class="fit"><div class="frame">
+  <div class="key" style="left:-5px;top:175px;height:32px"></div><div class="key" style="left:-5px;top:236px;height:62px"></div><div class="key" style="left:-5px;top:314px;height:62px"></div><div class="key" style="right:-5px;top:262px;height:100px"></div>
+  <div class="screen">
+    <div class="status" aria-hidden="true">9:41<b></b><svg viewBox="0 0 66 14" fill="currentColor"><rect y="8" width="3" height="5" rx="1"/><rect x="5" y="6" width="3" height="7" rx="1"/><rect x="10" y="3" width="3" height="10" rx="1"/><rect x="15" y="0" width="3" height="13" rx="1"/><path d="M24 5a10 10 0 0 1 14 0l-2 2a7 7 0 0 0-10 0zM27.5 8.500a5 5 0 0 1 7 0L31 12.500z"/><rect x="43" y=".5" width="20" height="12" rx="4" fill="none" stroke="currentColor"/><rect x="45" y="2.5" width="16" height="8" rx="2"/></svg></div>
+    <div class="page"></div>
+    <div class="bar" aria-hidden="true"><i>‹</i><span>網址列</span><i>···</i></div>
+    <div class="home"></div>
+  </div>
+</div></div>
+<script>
+(() => {
+const walk = "data:image/svg+xml," + encodeURIComponent("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1080 1350\" width=\"1080\" height=\"1350\"><rect width=\"1080\" height=\"1350\" fill=\"#f2e3c6\"/><circle cx=\"790\" cy=\"330\" r=\"150\" fill=\"#e2703a\"/><path d=\"M0 900Q270 720 540 860T1080 800V1350H0Z\" fill=\"#5f7d5a\"/><path d=\"M0 1080Q360 930 700 1050T1080 1020V1350H0Z\" fill=\"#35523f\"/><path d=\"M470 1350Q590 1200 500 1110T610 960\" fill=\"none\" stroke=\"#f2e3c6\" stroke-width=\"30\" stroke-linecap=\"round\"/><text x=\"100\" y=\"220\" font-family=\"PingFang TC, Noto Sans TC, sans-serif\" font-weight=\"600\" font-size=\"100\" fill=\"#35523f\" text-anchor=\"start\">走得慢<\/text><text x=\"100\" y=\"360\" font-family=\"PingFang TC, Noto Sans TC, sans-serif\" font-weight=\"600\" font-size=\"100\" fill=\"#35523f\" text-anchor=\"start\">也會到<\/text><\/svg>");
+const tide = "data:image/svg+xml," + encodeURIComponent("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1600 1000\" width=\"1600\" height=\"1000\"><rect width=\"1600\" height=\"1000\" fill=\"#bcd6dc\"/><circle cx=\"1180\" cy=\"290\" r=\"110\" fill=\"#fff6df\"/><path d=\"M0 500Q200 430 400 500T800 500T1200 500T1600 500V1000H0Z\" fill=\"#78a9b5\"/><path d=\"M0 610Q200 540 400 610T800 610T1200 610T1600 610V1000H0Z\" fill=\"#4f8797\"/><path d=\"M0 720Q200 650 400 720T800 720T1200 720T1600 720V1000H0Z\" fill=\"#2f6678\"/><path d=\"M0 830Q200 760 400 830T800 830T1200 830T1600 830V1000H0Z\" fill=\"#1d4a5c\"/><\/svg>");
+const list = "data:image/svg+xml," + encodeURIComponent("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1080 1080\" width=\"1080\" height=\"1080\"><rect width=\"1080\" height=\"1080\" fill=\"#fbfaf5\"/><text x=\"110\" y=\"210\" font-family=\"PingFang TC, Noto Sans TC, sans-serif\" font-weight=\"600\" font-size=\"88\" fill=\"#222\" text-anchor=\"start\">今天只做三件事<\/text><rect x=\"110\" y=\"378\" width=\"72\" height=\"72\" rx=\"12\" fill=\"none\" stroke=\"#222\" stroke-width=\"7\"/><text x=\"230\" y=\"440\" font-family=\"PingFang TC, Noto Sans TC, sans-serif\" font-weight=\"600\" font-size=\"64\" fill=\"#222\" text-anchor=\"start\">一件重要的<\/text><rect x=\"110\" y=\"568\" width=\"72\" height=\"72\" rx=\"12\" fill=\"none\" stroke=\"#222\" stroke-width=\"7\"/><text x=\"230\" y=\"630\" font-family=\"PingFang TC, Noto Sans TC, sans-serif\" font-weight=\"600\" font-size=\"64\" fill=\"#222\" text-anchor=\"start\">一件想做的<\/text><rect x=\"110\" y=\"758\" width=\"72\" height=\"72\" rx=\"12\" fill=\"none\" stroke=\"#222\" stroke-width=\"7\"/><text x=\"230\" y=\"820\" font-family=\"PingFang TC, Noto Sans TC, sans-serif\" font-weight=\"600\" font-size=\"64\" fill=\"#222\" text-anchor=\"start\">一件照顧自己的<\/text><path d=\"M124 412l22 24 44-56\" fill=\"none\" stroke=\"#c4472f\" stroke-width=\"14\" stroke-linecap=\"round\"/><\/svg>");
+const lamp = "data:image/svg+xml," + encodeURIComponent("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1080 1350\" width=\"1080\" height=\"1350\"><rect width=\"1080\" height=\"1350\" fill=\"#1c2440\"/><path d=\"M540 420L180 1350H900Z\" fill=\"#f4c95d\" opacity=\".3\"/><path d=\"M540 420L340 1350H740Z\" fill=\"#f4c95d\" opacity=\".4\"/><path d=\"M400 420Q410 250 540 250T680 420Z\" fill=\"#e8e1cf\"/><path d=\"M540 0V250\" stroke=\"#e8e1cf\" stroke-width=\"10\"/><circle cx=\"540\" cy=\"430\" r=\"48\" fill=\"#ffe9a8\"/><\/svg>");
+const ridge = "data:image/svg+xml," + encodeURIComponent("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1600 900\" width=\"1600\" height=\"900\"><rect width=\"1600\" height=\"900\" fill=\"#e9d5d0\"/><path d=\"M0 620L330 290 560 520 860 190 1180 560 1370 400 1600 610V900H0Z\" fill=\"#a0707a\"/><path d=\"M0 760L420 530 760 720 1100 520 1600 770V900H0Z\" fill=\"#673f55\"/><path d=\"M1010 535l52-76 52 76z\" fill=\"#f5b65a\"/><\/svg>");
+const seed = "data:image/svg+xml," + encodeURIComponent("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1080 1920\" width=\"1080\" height=\"1920\"><rect width=\"1080\" height=\"1920\" fill=\"#dfe6cf\"/><rect y=\"1260\" width=\"1080\" height=\"660\" fill=\"#6b4b38\"/><path d=\"M540 1420V820\" stroke=\"#3f6b3c\" stroke-width=\"26\" stroke-linecap=\"round\"/><path d=\"M540 1010Q330 990 290 800Q500 800 540 1010Z\" fill=\"#5b8f4e\"/><path d=\"M540 900Q740 870 780 680Q570 690 540 900Z\" fill=\"#78ab60\"/><ellipse cx=\"540\" cy=\"1450\" rx=\"80\" ry=\"52\" fill=\"#e1b878\"/><text x=\"540\" y=\"290\" font-family=\"PingFang TC, Noto Sans TC, sans-serif\" font-weight=\"600\" font-size=\"96\" fill=\"#34502f\" text-anchor=\"middle\">看不見的時候<\/text><text x=\"540\" y=\"430\" font-family=\"PingFang TC, Noto Sans TC, sans-serif\" font-weight=\"600\" font-size=\"96\" fill=\"#34502f\" text-anchor=\"middle\">也在長大<\/text><text x=\"540\" y=\"1720\" font-family=\"PingFang TC, Noto Sans TC, sans-serif\" font-weight=\"600\" font-size=\"54\" fill=\"#f0e3d2\" text-anchor=\"middle\">給正在等待的自己<\/text><\/svg>");
+
+// Sample sentences and drawings were made for this project. Ratios and lengths vary on purpose.
+const card = (id, fields) => ({
+  id: `demo-${id}`, content: "", link: "", imageUrl: null, ...fields,
+});
+
+const demoCards = [
+  card("walk", { imageUrl: walk }),
+  card("tide", { imageUrl: tide, content: "心情像潮水，退的時候不用追。" }),
+  card("list", { imageUrl: list }),
+  card("lamp", { imageUrl: lamp, content: "看不清全程時，先照亮下一步就好。" }),
+  card("ridge", { imageUrl: ridge, content: "休息也算在路程裡。" }),
+  card("seed", { imageUrl: seed }),
+  card("short", { content: "先完成，再變好。" }),
+  card("medium", { content: "你不需要每天都有進步。\n有些日子，沒有放棄就已經很好了。" }),
+  card("link", { content: "把想做的事寫下來，然後刪到只剩今天做得完的。", link: "https://example.com/" }),
+  card("long", {
+    content: [
+      "我以前覺得忙代表重要，所以把行事曆填得很滿。後來有一次連續開了六個會，回家以後想不起來任何一個會議的結論。",
+      "那天我開始做一個很小的練習：每件事結束以後，留五分鐘，只寫一句「這件事改變了什麼」。寫不出來的，下次就不去。",
+      "三個月以後，行事曆空了一半，做完的事卻變多了。原來我缺的不是時間，是選擇的勇氣。",
+      "所以現在每次有人問我能不能加一件事，我會先問自己：如果答應，我要拿哪一件來換？答不出來，就先不答應。",
+      "這不是拒絕別人，是把答應過的事好好做完。慢一點沒有關係，記得自己為什麼開始就好。",
+      "如果你今天也很累，先把最不重要的那件事劃掉。那條線畫下去的感覺，比完成它還好。",
+    ].join("\n\n"),
+  }),
+];
+
+// Which card comes next, and how the collection is sorted. Pure: pass in time and randomness.
+// Card fields: likes, skips (lifetime counts), likeScore, skipScore (counts that fade), lastSeenAt, createdAt.
+
+const DAY = 86_400_000;
+const HALF_LIFE = 90 * DAY; // an opinion counts half after 90 days
+const SLOTS = { fresh: 0.2, lost: 0.15, wild: 0.05 }; // the rest goes to taste
+
+const seenCount = (c) => (c.likes || 0) + (c.skips || 0);
+const likeRatio = (c) => (seenCount(c) ? (c.likes || 0) / seenCount(c) : null);
+
+function faded(card, now) {
+  const f = card.lastSeenAt ? 0.5 ** (Math.max(now - card.lastSeenAt, 0) / HALF_LIFE) : 1;
+  return { like: (card.likeScore ?? card.likes ?? 0) * f, skip: (card.skipScore ?? card.skips ?? 0) * f };
+}
+
+/** Expected chance of a like, 0 to 1. An unseen card starts at 0.5. */
+function taste(card, now) {
+  const { like, skip } = faded(card, now);
+  return (1 + like) / (2 + like + skip);
+}
+
+/** Fields that one swipe changes. */
+function recordSwipe(card, direction, now) {
+  const { like, skip } = faded(card, now);
+  const liked = direction === "right";
+  return {
+    likes: (card.likes || 0) + (liked ? 1 : 0),
+    skips: (card.skips || 0) + (liked ? 0 : 1),
+    likeScore: like + (liked ? 1 : 0),
+    skipScore: skip + (liked ? 0 : 1),
+    lastSeenAt: now,
+  };
+}
+
+/** 0 right after a view, back to 1 with time. Loved cards recover in hours, skipped ones in days. */
+function rested(card, now) {
+  if (!card.lastSeenAt) return 1;
+  const days = 7 * (0.25 / 7) ** taste(card, now);
+  return 1 - Math.exp(-Math.max(now - card.lastSeenAt, 0) / (days * DAY));
+}
+
+function normal(random) {
+  return Math.sqrt(-2 * Math.log(1 - random())) * Math.cos(2 * Math.PI * random());
+}
+// Marsaglia-Tsang, valid for shape >= 1.
+function gamma(shape, random) {
+  const d = shape - 1 / 3;
+  const c = 1 / Math.sqrt(9 * d);
+  for (;;) {
+    const x = normal(random);
+    const v = (1 + c * x) ** 3;
+    if (v > 0 && Math.log(1 - random()) < 0.5 * x * x + d - d * v + d * Math.log(v)) return d * v;
+  }
+}
+function sampleBeta(a, b, random) {
+  const x = gamma(a, random);
+  return x / (x + gamma(b, random));
+}
+
+const pickOne = (list, random) => list[Math.floor(random() * list.length)];
+
+/**
+ * Returns { card, reason } or null. reason: "fresh" | "lost" | "wild" | "taste".
+ * recentIds: newest last. The latest cards are held back, so a small library never loops tightly.
+ */
+function chooseNext(cards, { now, recentIds = [], random = Math.random }) {
+  if (cards.length === 0) return null;
+  const hold = Math.min(6, Math.floor((cards.length - 1) / 2));
+  const floor = cards.length > 1 ? Math.max(hold, 1) : 0;
+  const held = new Set(floor ? recentIds.slice(-floor) : []);
+  const pool = cards.filter((c) => !held.has(c.id));
+
+  const roll = random();
+  if (roll < SLOTS.fresh) {
+    const fresh = pool.filter((c) => seenCount(c) < 3);
+    const least = Math.min(...fresh.map(seenCount));
+    if (fresh.length) return { card: pickOne(fresh.filter((c) => seenCount(c) === least), random), reason: "fresh" };
+  } else if (roll < SLOTS.fresh + SLOTS.lost) {
+    const lost = pool.filter((c) => c.lastSeenAt && now - c.lastSeenAt > 14 * DAY && taste(c, now) >= 0.5);
+    if (lost.length) return { card: lost.reduce((a, b) => (a.lastSeenAt < b.lastSeenAt ? a : b)), reason: "lost" };
+  } else if (roll < SLOTS.fresh + SLOTS.lost + SLOTS.wild) {
+    return { card: pickOne(pool, random), reason: "wild" };
+  }
+  let best = null;
+  for (const card of pool) {
+    const { like, skip } = faded(card, now);
+    const score = sampleBeta(1 + like, 1 + skip, random) * (0.02 + 0.98 * rested(card, now));
+    if (!best || score > best.score) best = { card, score };
+  }
+  return { card: best.card, reason: "taste" };
+}
+
+/** Wilson lower bound (95%): one like out of one does not beat nineteen out of twenty. */
+function likeConfidence(card) {
+  const n = seenCount(card);
+  if (!n) return -1;
+  const z = 1.96;
+  const p = likeRatio(card);
+  return (p + z * z / (2 * n) - z * Math.sqrt((p * (1 - p) + z * z / (4 * n)) / n)) / (1 + z * z / n);
+}
+
+const SORT_KEYS = {
+  ratio: likeConfidence,
+  likes: (c) => c.likes || 0,
+  seen: seenCount,
+  added: (c) => c.createdAt || 0,
+};
+function sortCards(cards, key = "ratio", ascending = false) {
+  const value = SORT_KEYS[key];
+  const sign = ascending ? 1 : -1;
+  return [...cards].sort((a, b) => sign * (value(a) - value(b)) || (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+const $ = (s, root = document) => root.querySelector(s);
+const el = (h) => { const t = document.createElement("template"); t.innerHTML = h.trim(); return t.content.firstElementChild; };
+const I = {
+  all: '<rect x="4" y="4" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="2"/>',
+  deck: '<rect x="8" y="4" width="12" height="16" rx="3"/><path d="M5 7v10"/>',
+  add: '<path d="M12 5v14M5 12h14"/>', no: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
+  yes: '<path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.2a4.2 4.2 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"/>',
+  sort: '<path d="M4 7h16M7 12h10M10 17h4"/>', back: '<path d="M14.5 5.5L8 12l6.5 6.5"/>',
+  edit: '<path d="M5 19l1-4L15.5 5.5l3 3L9 18z"/>', check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+};
+const svg = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${I[k]}</svg>`;
+const glass = (k, label, cls = "") => `<button class="glass ${cls}" aria-label="${label}">${svg(k)}</button>`;
+const page = $(".page"), screenEl = $(".screen"), frame = $(".frame"), fit = $(".fit");
+const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+const REASON = { fresh: "新卡優先", lost: "好久沒看", wild: "隨機驚喜", taste: "依喜好" };
+const SORTS = { ratio: "喜歡率", likes: "喜歡數量", seen: "累積次數", added: "加入時間" };
+// Example history: [likes, skips, added days ago, last seen days ago]
+const HISTORY = { walk: [22, 2, 160, 3], tide: [9, 6, 120, 20], list: [14, 3, 95, 1], lamp: [31, 9, 210, 2], ridge: [3, 11, 80, 12], seed: [5, 0, 30, 18], short: [40, 22, 240, 1], medium: [12, 1, 60, 33], link: [1, 0, 6, 5], long: [2, 8, 45, 9] };
+const start = Date.now();
+let cards = demoCards.map((c) => {
+  const [likes, skips, added, seen] = HISTORY[c.id.slice(5)];
+  return { ...c, likes, skips, createdAt: start - added * DAY, lastSeenAt: start - seen * DAY };
+});
+let scale = 1, top = null, under = null, swipeTop = () => {}, full = false, env = "home", recent = [];
+let sortKey = "ratio", ascending = false;
+
+const PAIRS = [["#f0b68b", "#a3b6ee"], ["#abd6bb", "#f0d488"], ["#cbb0ea", "#f2aea8"], ["#9bd0e0", "#dcc0f0"]];
+const pairOf = (c) => PAIRS[[...c.id].reduce((n, x) => n + x.charCodeAt(0), 0) % PAIRS.length];
+const lightOf = (c) => c.imageUrl ? `url("${c.tiny || c.imageUrl}")` : `radial-gradient(at 15% 10%,${pairOf(c)[0]},transparent 70%),radial-gradient(at 88% 90%,${pairOf(c)[1]},transparent 70%),linear-gradient(#fff,#fff)`;
+const wash = (c) => `linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,.35)),${lightOf(c)}`;
+const day = (t) => new Intl.DateTimeFormat("zh-TW", { year: "numeric", month: "numeric", day: "numeric" }).format(t);
+const percent = (c) => { const r = likeRatio(c); return r === null ? "尚無" : `${Math.round(r * 100)}%`; };
+
+function artNode(card) {
+  const a = card.art, n = el('<div class="art"></div>');
+  if (card.imageUrl) {
+    const i = new Image(); i.src = card.imageUrl; i.alt = card.content || "圖片卡片"; i.draggable = false;
+    i.style.cssText = `left:${a.image.x}%;top:${a.image.y}%;width:${a.image.s}%`; n.append(i);
+  }
+  if (card.content) {
+    const p = el("<p><span></span></p>"); p.firstChild.textContent = card.content;
+    p.className = `${a.text.color}${a.text.plate ? " plate" : ""}`;
+    p.style.cssText = `left:${a.text.x}%;top:${a.text.y}%;--size:${a.text.size}`; n.append(p);
+  }
+  return n;
+}
+function node(card) {
+  const kind = card.art ? "composed" + (card.imageUrl ? " image" : " text") : card.imageUrl ? (card.content ? "both" : "image") : "text" + (card.content.length < 40 ? " short" : "");
+  const n = el(`<div class="card ${kind}"><div class="ambient"></div><div class="scroll"></div><div class="sheen"></div></div>`);
+  const box = $(".scroll", n);
+  if (card.art) box.append(artNode(card));
+  else {
+    if (card.imageUrl) { const i = new Image(); i.src = card.imageUrl; i.alt = card.content ? "" : "圖片卡片"; i.draggable = false; box.append(i); }
+    if (card.content) { const p = el("<p></p>"); p.textContent = card.content; box.append(p); }
+  }
+  $(".ambient", n).style.backgroundImage = lightOf(card);
+  return n;
+}
+function thumb(card) {
+  const t = el(`<div class="thumb${card.imageUrl || card.art ? " pic" : ""}"></div>`);
+  if (card.art) t.append(artNode(card));
+  else if (card.imageUrl) { const i = new Image(); i.src = card.imageUrl; i.alt = card.content || "圖片卡片"; t.append(i); }
+  else t.textContent = card.content.length > 46 ? card.content.slice(0, 44) + "…" : card.content;
+  if (!card.imageUrl) t.style.backgroundImage = wash(card);
+  return t;
+}
+
+/* Deck */
+const place = (n, p) => { n.style.transform = `translateY(${30 * (1 - p)}px) scale(${.94 + .06 * p})`; };
+function signal(q) { for (const [k, v] of [["--q", q], ["--r", Math.max(q, 0)], ["--l", Math.max(-q, 0)]]) page.style.setProperty(k, v); }
+function relight() {
+  const box = $(".light", page), layer = el("<div></div>"), old = [...box.children];
+  layer.style.backgroundImage = lightOf(top.card);
+  // Fade the old light out above the new one, so the resting layer is never animated.
+  box.prepend(layer);
+  old.forEach((x) => x.animate([{ opacity: .9 }, { opacity: 0 }], { duration: reduced.matches ? 1 : 420, fill: "forwards" }).finished.then(() => x.remove()));
+}
+function draw(previousId) {
+  const { card, reason } = chooseNext(cards, { now: Date.now(), recentIds: [...recent, previousId].filter(Boolean) });
+  return { card, reason, node: node(card) };
+}
+function addUnder(forced) {
+  under?.node.remove();
+  under = forced ? { card: forced, reason: "fresh", node: node(forced) } : draw(top.card.id);
+  $(".deck", page).prepend(under.node); place(under.node, 0);
+}
+function resetDeck(first) {
+  const deck = $(".deck", page);
+  deck.replaceChildren(); under = null; swipeTop = () => {};
+  $(".no", page).disabled = $(".yes", page).disabled = cards.length === 0;
+  if (!cards.length) { top = null; deck.append(el('<div class="empty">還沒有卡片</div>')); $(".why").textContent = ""; return; }
+  top = first ? { card: first, reason: "taste", node: node(first) } : draw();
+  deck.append(top.node); addUnder(); activate();
+}
+function activate() {
+  relight();
+  $(".why").textContent = `這張出現的原因：${REASON[top.reason]}`;
+  const n = top.node, deck = $(".deck", page);
+  n.style.transition = "";
+  let pid = null, sx = 0, sy = 0, x = 0, locked = false, samples = [];
+  const W = () => deck.clientWidth;
+  const paint = () => {
+    const p = Math.min(Math.abs(x) / (W() * .35), 1);
+    n.style.transform = `translateX(${x}px) rotate(${reduced.matches ? 0 : x / W() * 10}deg)`;
+    n.style.setProperty("--x", x / W()); signal(Math.sign(x) * p); place(under.node, p);
+  };
+  const leave = (sign, v = 0) => {
+    if (n.leaving) return;
+    n.leaving = true; n.style.pointerEvents = "none";
+    const to = sign * W() * 1.35, ms = reduced.matches ? 120 : Math.max(160, Math.min(320, Math.abs(to - x) / Math.max(Math.abs(v), 1.2)));
+    n.animate(reduced.matches ? [{ opacity: 1 }, { opacity: 0 }] : [{ transform: n.style.transform || "none" }, { transform: `translateX(${to}px) rotate(${sign * 14}deg)` }], { duration: ms, easing: "cubic-bezier(.2,.6,.4,1)", fill: "forwards" }).finished.then(() => n.remove());
+    signal(0);
+    if (!reduced.matches) $(sign > 0 ? ".yes" : ".no", page).animate([{ scale: 1 }, { scale: 1.2 }, { scale: 1 }], { duration: 300, easing: "ease-out" });
+    $(sign > 0 ? ".er" : ".el", page).animate([{ opacity: 1 }, { opacity: 0 }], { duration: 380 });
+    const id = top.card.id;
+    cards = cards.map((c) => c.id === id ? { ...c, ...recordSwipe(c, sign > 0 ? "right" : "left", Date.now()) } : c);
+    recent = [...recent, id].slice(-12);
+    under.node.style.transition = "transform 180ms cubic-bezier(.22,1,.36,1)"; place(under.node, 1);
+    top = under; under = null; deck.append(n); addUnder(); activate();
+  };
+  const back = () => {
+    page.classList.add("settle"); setTimeout(() => page.classList.remove("settle"), 260);
+    const from = n.style.transform; x = 0; paint();
+    if (!reduced.matches) n.animate([{ transform: from }, { transform: "none" }], { duration: 260, easing: "cubic-bezier(.2,1.25,.4,1)" });
+  };
+  swipeTop = leave;
+  n.onpointerdown = (e) => {
+    if (pid !== null || e.button) return;
+    // Safari owns the screen edge for back and forward.
+    const r = screenEl.getBoundingClientRect(), at = (e.clientX - r.left) / scale;
+    if ((env === "safari" || full) && (at < 24 || at > r.width / scale - 24)) return;
+    pid = e.pointerId; sx = e.clientX; sy = e.clientY; locked = false; samples = [[e.timeStamp, 0]]; n.style.transition = "none";
+  };
+  n.onpointermove = (e) => {
+    if (e.pointerId !== pid) return;
+    const dx = (e.clientX - sx) / scale, dy = (e.clientY - sy) / scale;
+    if (!locked) {
+      if (Math.hypot(dx, dy) < 8) return;
+      if (Math.abs(dx) < Math.abs(dy)) { pid = null; return; }
+      locked = true; n.setPointerCapture(pid);
+    }
+    samples = [...samples.filter(([t]) => e.timeStamp - t < 100), [e.timeStamp, dx]]; x = dx; paint();
+  };
+  n.onpointerup = n.onpointercancel = (e) => {
+    if (e.pointerId !== pid) return;
+    pid = null; if (!locked) return;
+    const [t0, x0] = samples.find(([t]) => e.timeStamp - t < 100) || [e.timeStamp, x];
+    const v = (x - x0) / Math.max(e.timeStamp - t0, 1);
+    const flick = Math.abs(v) > .5 && Math.abs(x) > 24 && Math.sign(v) === Math.sign(x);
+    if (e.type === "pointerup" && (Math.abs(x) > W() * .28 || flick)) leave(Math.sign(x), v); else back();
+  };
+}
+
+/* Views stack: opening one freezes everything below, closing restores exactly that state. */
+function open(view, { onEscape } = {}) {
+  const opener = document.activeElement;
+  const rest = [...page.children].map((c) => [c, c.inert]);
+  rest.forEach(([c]) => { c.inert = true; });
+  page.append(view);
+  if (!reduced.matches) view.animate([{ transform: "translateY(24px)" }, { transform: "none" }], { duration: 220, easing: "cubic-bezier(.22,1,.36,1)" });
+  const close = () => { view.remove(); rest.forEach(([c, was]) => { c.inert = was; }); if (opener?.isConnected) opener.focus({ preventScroll: true }); };
+  view.onEscape = onEscape || close;
+  return close;
+}
+function toast(text) {
+  const t = el('<div class="toast" role="status"></div>'); t.textContent = text; page.append(t);
+  setTimeout(() => t.remove(), 1800);
+}
+
+/* Collection */
+function openAll() {
+  const v = el(`<div class="view" role="dialog" aria-label="收藏"><header><h2>收藏</h2><button class="glass pill sorter" aria-haspopup="menu" aria-expanded="false">${svg("sort")}<span></span></button></header><div class="body"><div class="grid"></div></div>${glass("deck", "回到滑卡", "corner all")}</div>`);
+  const close = open(v);
+  const paint = () => {
+    $(".sorter span", v).textContent = SORTS[sortKey];
+    $(".sorter", v).setAttribute("aria-label", `排序：${SORTS[sortKey]}，${ascending ? "由低到高" : "由高到低"}`);
+    $(".grid", v).replaceChildren(...sortCards(cards, sortKey, ascending).map((c) => {
+      const b = el('<button class="tile"><div class="meta"><b></b><span></span></div></button>');
+      b.prepend(thumb(c));
+      const n = seenCount(c);
+      const pair = { ratio: [percent(c), `${n} 次`], likes: [`喜歡 ${c.likes}`, percent(c)], seen: [`${n} 次`, percent(c)], added: [day(c.createdAt), percent(c)] }[sortKey];
+      $("b", b).textContent = pair[0]; $("span", b).textContent = pair[1];
+      b.onclick = () => openDetail(c.id, paint);
+      return b;
+    }));
+    if (!cards.length) $(".grid", v).replaceChildren(el("<p>還沒有卡片</p>"));
+  };
+  let menu = null;
+  const closeMenu = () => { menu?.remove(); menu = null; $(".sorter", v).setAttribute("aria-expanded", "false"); };
+  v.onEscape = () => (menu ? (closeMenu(), $(".sorter", v).focus()) : close());
+  $(".sorter", v).onclick = (e) => {
+    e.stopPropagation();
+    if (menu) { closeMenu(); return; }
+    menu = el(`<div class="menu" role="menu">${Object.entries(SORTS).map(([k, t]) => `<button role="menuitemradio" data-k="${k}" aria-checked="${k === sortKey}">${t}</button>`).join("")}<hr><button role="menuitemradio" data-d="0" aria-checked="${!ascending}">由高到低</button><button role="menuitemradio" data-d="1" aria-checked="${ascending}">由低到高</button></div>`);
+    menu.onclick = (ev) => {
+      ev.stopPropagation();
+      const { k, d } = ev.target.dataset;
+      if (k) sortKey = k; else if (d) ascending = d === "1"; else return;
+      closeMenu(); paint(); $(".body", v).scrollTop = 0; $(".sorter", v).focus();
+    };
+    v.append(menu); $(".sorter", v).setAttribute("aria-expanded", "true");
+    $('[aria-checked="true"]', menu).focus();
+  };
+  v.onclick = closeMenu;
+  $(".corner", v).onclick = close;
+  paint(); $(".corner", v).focus({ preventScroll: true });
+}
+function openDetail(id, changed) {
+  const c = cards.find((x) => x.id === id), n = seenCount(c);
+  const v = el(`<div class="view" role="dialog" aria-label="卡片紀錄"><header>${glass("back", "回到收藏", "round")}</header><div class="body"><div class="hero"></div>
+    <div class="big"><b>${percent(c)}</b><span>喜歡率</span></div>
+    ${n ? `<div class="ratio" aria-hidden="true">${c.likes ? `<i class="a" style="flex:${c.likes}"></i>` : ""}${c.skips ? `<i class="z" style="flex:${c.skips}"></i>` : ""}</div>` : ""}
+    <div class="sides"><span>喜歡 ${c.likes}</span><span>略過 ${c.skips}</span></div>
+    <dl><dt>滑到</dt><dd>${n} 次</dd><dt>加入時間</dt><dd>${day(c.createdAt)}</dd><dt>上次看到</dt><dd>${c.lastSeenAt ? day(c.lastSeenAt) : "還沒看過"}</dd></dl>
+    <button class="danger">刪除</button></div></div>`);
+  $(".hero", v).append(thumb(c));
+  const close = open(v);
+  $(".round", v).onclick = close; $(".round", v).focus({ preventScroll: true });
+  $(".danger", v).onclick = () => {
+    const s = el('<div class="scrim"><div class="sheet" role="alertdialog" aria-label="刪除卡片"><p>刪除後無法復原</p><button class="go">刪除這張卡</button><button class="keep">保留</button></div></div>');
+    const shut = open(s);
+    $(".keep", s).onclick = shut; $(".keep", s).focus();
+    s.onclick = (e) => { if (e.target === s) shut(); };
+    $(".go", s).onclick = () => {
+      cards = cards.filter((x) => x.id !== id); recent = recent.filter((x) => x !== id);
+      shut(); close(); changed(); toast("已刪除");
+      if (!cards.length || top.card.id === id) resetDeck(); else if (under.card.id === id) addUnder();
+    };
+  };
+}
+
+/* Add: edit, then preview, then save */
+const LONG = 100;
+async function readImage(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const i = new Image(); i.src = url; await i.decode();
+    const k = Math.min(1, 1400 / Math.max(i.naturalWidth, i.naturalHeight)), c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(i.naturalWidth * k)); c.height = Math.max(1, Math.round(i.naturalHeight * k));
+    c.getContext("2d").drawImage(i, 0, 0, c.width, c.height);
+    return { url: c.toDataURL(file.type === "image/png" ? "image/png" : "image/jpeg", .88), ratio: c.height / c.width };
+  } finally { URL.revokeObjectURL(url); }
+}
+function openAdd() {
+  const draft = { id: "new-" + Date.now(), content: "", link: "", imageUrl: null, likes: 0, skips: 0, art: { image: { x: 50, y: 50, s: 100 }, text: { x: 50, y: 50, size: 9, color: "ink", plate: false } } };
+  const v = el(`<div class="view" role="dialog" aria-label="新增卡片"><header>${glass("no", "取消", "round")}<h2>新增</h2><span class="round"></span></header>
+    <div class="body" style="padding-bottom:8px"><div class="canvas"></div><div class="tools">
+    <div class="row"><label class="chip"><input type="file" id="pick" accept="image/*"><span>選圖片</span></label><button class="chip drop">移除圖片</button></div>
+    <textarea id="words" aria-label="文字" placeholder="寫下一句話"></textarea>
+    <label class="slide img"><span>圖片大小</span><input type="range" id="isize" min="30" max="260" value="100"></label>
+    <label class="slide txt"><span>文字大小</span><input type="range" id="tsize" min="4" max="18" step=".5" value="9"></label>
+    <div class="row txt"><button class="chip" data-color="ink">深字</button><button class="chip" data-color="paper">白字</button><button class="chip plate">文字底色</button></div>
+    <p class="err" role="alert"></p></div></div><div class="foot"><button class="primary">預覽</button></div></div>`);
+  const close = open(v), canvas = $(".canvas", v), a = draft.art;
+  let chosen = "text", moved = false;
+  const isLong = () => !draft.imageUrl && draft.content.length > LONG;
+  const ready = () => draft.imageUrl || draft.content.trim();
+  function paint() {
+    canvas.style.backgroundImage = draft.imageUrl ? (draft.tiny ? `linear-gradient(rgba(255,255,255,.12),rgba(255,255,255,.12)),url("${draft.tiny}")` : "") : wash(draft);
+    if (isLong()) { const d = el('<div class="longtext"></div>'); d.textContent = draft.content; canvas.replaceChildren(d); }
+    else {
+      const art = artNode(draft); canvas.replaceChildren(art);
+      if (!ready()) art.append(el('<div class="hint">圖片或文字</div>'));
+      for (const [key, n] of [["image", $("img", art)], ["text", $("p", art)]]) {
+        if (!n) continue;
+        n.tabIndex = 0; n.setAttribute("role", "group"); n.setAttribute("aria-label", key === "image" ? "圖片，方向鍵移動" : "文字，方向鍵移動");
+        n.classList.toggle("on", key === chosen && draft.imageUrl !== null);
+        n.dataset.key = key;
+        n.onkeydown = (e) => {
+          const d = { ArrowLeft: [-2, 0], ArrowRight: [2, 0], ArrowUp: [0, -2], ArrowDown: [0, 2] }[e.key];
+          if (!d) return;
+          e.preventDefault(); e.stopPropagation(); move(key, d[0], d[1]); if (key === "text") moved = true;
+          paint(); $(`[data-key=${key}]`, canvas).focus();
+        };
+      }
+    }
+    v.querySelectorAll(".img").forEach((n) => { n.hidden = !draft.imageUrl; });
+    v.querySelectorAll(".txt").forEach((n) => { n.hidden = !draft.content.trim() || isLong(); });
+    $(".drop", v).hidden = !draft.imageUrl;
+    $(".chip span", v).textContent = draft.imageUrl ? "換圖片" : "選圖片";
+    v.querySelectorAll("[data-color]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.color === a.text.color));
+    $(".plate.chip", v).setAttribute("aria-pressed", a.text.plate);
+    $(".primary", v).disabled = !ready();
+  }
+  const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  function move(key, dx, dy) { a[key].x = clamp(a[key].x + dx, 0, 100); a[key].y = clamp(a[key].y + dy, 0, 100); }
+  // One finger moves the touched layer. Two fingers resize it.
+  const fingers = new Map();
+  let grab = null;
+  const spread = () => { const [p, q] = [...fingers.values()]; return Math.hypot(p.x - q.x, p.y - q.y); };
+  canvas.onpointerdown = (e) => {
+    if (isLong() || !ready()) return;
+    fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    canvas.setPointerCapture(e.pointerId);
+    if (fingers.size === 1) {
+      const hit = e.target.closest("img,p");
+      if (hit) chosen = hit.tagName === "P" ? "text" : "image"; else if (draft.imageUrl) chosen = "image";
+      if (chosen === "text" && !draft.content.trim()) chosen = "image";
+      grab = { x: e.clientX, y: e.clientY }; paint();
+    } else grab = { pinch: spread(), size: chosen === "image" ? a.image.s : a.text.size };
+  };
+  canvas.onpointermove = (e) => {
+    if (!fingers.has(e.pointerId) || !grab) return;
+    fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (fingers.size > 1 && grab.pinch) {
+      const size = grab.size * spread() / grab.pinch;
+      if (chosen === "image") $("#isize", v).value = a.image.s = clamp(size, 30, 260); else $("#tsize", v).value = a.text.size = clamp(size, 4, 18);
+    } else if (!grab.pinch) {
+      const r = canvas.getBoundingClientRect();
+      move(chosen, (e.clientX - grab.x) / r.width * 100, (e.clientY - grab.y) / r.height * 100);
+      if (chosen === "text") moved = true;
+      grab = { x: e.clientX, y: e.clientY };
+    }
+    paint();
+  };
+  canvas.onpointerup = canvas.onpointercancel = (e) => {
+    fingers.delete(e.pointerId);
+    const rest = [...fingers.values()][0]; grab = rest ? { ...rest } : null;
+  };
+  $("#pick", v).onchange = async (e) => {
+    const file = e.target.files[0]; e.target.value = "";
+    if (!file) return;
+    $(".err", v).textContent = "";
+    try {
+      const { url, ratio } = await readImage(file);
+      draft.imageUrl = url; draft.tiny = null; await shrink(draft);
+      // Start with the whole image visible: never cropped unless the person enlarges it.
+      a.image = { x: 50, y: 50, s: Math.min(100, 150 / ratio) };
+      $("#isize", v).value = a.image.s; chosen = "image";
+      if (!moved) { a.text.y = 82; a.text.plate = true; }
+    } catch { $(".err", v).textContent = "這張圖片讀不到，請換一張"; }
+    paint();
+  };
+  $(".drop", v).onclick = () => { draft.imageUrl = draft.tiny = null; if (!moved) { a.text.y = 50; a.text.plate = false; } chosen = "text"; paint(); };
+  $("#words", v).oninput = (e) => { draft.content = e.target.value; if (draft.content.trim()) chosen = "text"; paint(); };
+  $("#isize", v).oninput = (e) => { a.image.s = +e.target.value; chosen = "image"; paint(); };
+  $("#tsize", v).oninput = (e) => { a.text.size = +e.target.value; chosen = "text"; paint(); };
+  v.querySelectorAll("[data-color]").forEach((b) => { b.onclick = () => { a.text.color = b.dataset.color; paint(); }; });
+  $(".plate.chip", v).onclick = () => { a.text.plate = !a.text.plate; paint(); };
+  $(".round", v).onclick = () => {
+    if (!ready()) { close(); return; }
+    const s = el('<div class="scrim"><div class="sheet" role="alertdialog" aria-label="放棄編輯"><p>還沒加入，要放棄嗎？</p><button class="go">放棄</button><button class="keep">繼續編輯</button></div></div>');
+    const shut = open(s); $(".keep", s).onclick = shut; $(".keep", s).focus();
+    $(".go", s).onclick = () => { shut(); close(); };
+  };
+  v.onEscape = () => $(".round", v).click();
+  $(".primary", v).onclick = () => {
+    const c = { ...draft, content: draft.content.trim(), art: isLong() ? undefined : structuredClone(a) };
+    const p = el(`<div class="view preview" role="dialog" aria-label="預覽"><div class="light"><div></div></div><div class="deck"></div><div class="acts"><button class="glass pill redo">${svg("edit")}修改</button><button class="glass pill save">${svg("check")}加入</button></div></div>`);
+    $(".light div", p).style.backgroundImage = lightOf(c);
+    $(".deck", p).append(node(c));
+    const shut = open(p); $(".redo", p).onclick = shut; $(".save", p).focus({ preventScroll: true });
+    $(".save", p).onclick = () => {
+      const saved = { ...c, createdAt: Date.now() };
+      cards = [...cards, saved]; shut(); close();
+      if (top) addUnder(saved); else resetDeck(saved);
+      toast("已加入");
+    };
+  };
+  paint(); $(".round", v).focus({ preventScroll: true });
+}
+
+/* Stage */
+function render() {
+  document.querySelectorAll("[data-frame]").forEach((b) => b.setAttribute("aria-pressed", (b.dataset.frame === "off") === full));
+  document.querySelectorAll("[data-env]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.env === env));
+  document.body.classList.toggle("full", full); screenEl.classList.toggle("safari", env === "safari");
+}
+function resize() {
+  scale = full ? 1 : Math.max(.4, Math.min(1, (innerHeight - fit.offsetTop - 14) / 872, (document.documentElement.clientWidth - 32) / 421));
+  frame.style.transform = `translate(${8 * scale}px,4px) scale(${scale})`;
+  fit.style.width = `${421 * scale}px`; fit.style.height = `${872 * scale}px`;
+}
+page.append(el('<div class="light"></div>'), el('<div class="deck"></div>'), el('<div class="edge er"></div>'), el('<div class="edge el"></div>'),
+  el(glass("add", "新增", "corner add")), el(glass("no", "略過", "no")), el(glass("yes", "多看到", "yes")), el(glass("all", "收藏", "corner all")));
+$(".no", page).onclick = () => swipeTop(-1); $(".yes", page).onclick = () => swipeTop(1);
+$(".corner.all", page).onclick = openAll; $(".corner.add", page).onclick = openAdd;
+document.querySelectorAll("[data-frame]").forEach((b) => { b.onclick = () => { full = b.dataset.frame === "off"; render(); resize(); }; });
+document.querySelectorAll("[data-env]").forEach((b) => { b.onclick = () => { env = b.dataset.env; render(); }; });
+addEventListener("keydown", (e) => {
+  const view = [...page.children].filter((n) => n.onEscape).at(-1);
+  if (view) { if (e.key === "Escape") view.onEscape(); return; }
+  if (!e.repeat && e.key === "ArrowLeft") swipeTop(-1);
+  if (!e.repeat && e.key === "ArrowRight") swipeTop(1);
+});
+addEventListener("resize", resize);
+// A 4x5 copy of each image, scaled up, gives a soft light with no blur filter.
+async function shrink(c) {
+  try {
+    const i = new Image(); i.src = c.imageUrl; await i.decode();
+    const k = document.createElement("canvas"); k.width = 4; k.height = 5;
+    k.getContext("2d").drawImage(i, 0, 0, 4, 5); c.tiny = k.toDataURL();
+  } catch { /* keeps the full image as the light source */ }
+}
+render(); resize();
+Promise.all(cards.filter((c) => c.imageUrl).map(shrink)).then(() => resetDeck(cards.find((c) => c.id === "demo-tide")));
+
+})();
+</script>
