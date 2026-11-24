@@ -1,46 +1,127 @@
-import { useState, useEffect } from "react";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "./firebase";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { loadStore } from "./data/store";
+import { addToSession, patchCard, removeFromSession, startSession, swipe } from "./domain/session";
+import { tinyOf } from "./lib/image";
 import AddCard from "./pages/AddCard";
-import Review from "./pages/Review";
-import Gallery from "./pages/Gallery";
-import "./App.css";
+import Collection from "./pages/Collection";
+import { liftLaunch } from "./lib/launch";
+import Deck from "./pages/Deck";
+import SignIn from "./pages/SignIn";
+
+const context = () => ({ now: Date.now(), random: Math.random });
 
 export default function App() {
-  const [page, setPage] = useState("review");
-  const [cards, setCards] = useState([]);
-  const [cardsLoading, setCardsLoading] = useState(true);
+  const [view, setView] = useState("deck"); // deck | collection | add
+  const [status, setStatus] = useState("loading"); // loading | signedout | ready | error
+  const [session, setSession] = useState(null);
+  const [message, setMessage] = useState("");
+  const current = useRef(null);
+  const store = useRef(null);
+  const run = useRef(0); // a newer load or a sign-out cancels an older load
+  const [me, setMe] = useState(null);
 
-  const fetchCards = async () => {
-    setCardsLoading(true);
+  // The ref lets fast swipes build on each other before React renders.
+  const commit = useCallback((next) => {
+    current.current = next;
+    setSession(next);
+  }, []);
+
+  const clear = useCallback(() => {
+    run.current += 1;
+    commit(null);
+    setMe(null);
+    setView("deck");
+    setMessage("");
+    setStatus("signedout");
+  }, [commit]);
+
+  /** Keeps the current screen until the cards are here. */
+  const load = useCallback(async () => {
+    const mine = (run.current += 1);
+    const stale = () => mine !== run.current;
     try {
-      const snapshot = await getDocs(collection(db, "cards"));
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setCards(data);
+      store.current ??= await loadStore();
+      const { me: person, cards } = await store.current.load();
+      if (stale()) return;
+      setMe(person);
+      commit(startSession(cards, context()));
+      setStatus("ready");
+      for (const card of cards) {
+        if (card.imageUrl && !card.tiny) {
+          tinyOf(card.imageUrl).then((tiny) => { if (tiny && !stale()) commit(patchCard(current.current, card.id, { tiny })); });
+        }
+      }
     } catch (err) {
+      if (stale()) return;
+      if (err.status === 401) { clear(); return; }
       console.error(err);
-    } finally {
-      setCardsLoading(false);
+      setStatus("error");
     }
+  }, [commit, clear]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const topId = session?.top?.id;
+  useEffect(() => {
+    if (status !== "loading") liftLaunch(current.current?.cards.find((c) => c.id === topId)?.imageUrl);
+  }, [status, topId]);
+
+  const signIn = (code) => store.current.auth.signIn(code);
+  const signOut = async () => {
+    await store.current.auth.signOut();
+    clear();
+  };
+  const retry = () => {
+    setStatus("loading");
+    load();
   };
 
-  useEffect(() => { fetchCards(); }, []);
+  useEffect(() => {
+    if (!message) return undefined;
+    const timer = setTimeout(() => setMessage(""), 2400);
+    return () => clearTimeout(timer);
+  }, [message]);
 
+  const handleSwipe = useCallback(async (direction) => {
+    const { id } = current.current.top;
+    const { session: next, patch } = swipe(current.current, direction, context());
+    commit(next);
+    try {
+      await store.current.swipeCard(id, direction, patch);
+    } catch (err) {
+      console.error(err);
+      if (err.status === 401) clear();
+      else setMessage("上一次滑卡沒有存到");
+    }
+  }, [commit, clear]);
+
+  const handleAdd = async (draft) => {
+    const card = await store.current.addCard(draft);
+    commit(addToSession(current.current, card, context()));
+    setView("deck");
+    setMessage("已加入");
+  };
+
+  const handleDelete = async (card) => {
+    await store.current.deleteCard(card);
+    commit(removeFromSession(current.current, card.id, context()));
+    setMessage("已刪除");
+  };
+
+  const getPeople = useCallback(() => store.current.people, []);
+  const closeView = useCallback(() => setView("deck"), []);
+
+  if (status === "signedout") {
+    return <div className="app"><SignIn onSignIn={signIn} onEnter={load} /></div>;
+  }
   return (
     <div className="app">
-      <header className="header">
-        <h1 className="logo">mneme</h1>
-        <nav className="nav">
-          <button className={page === "review" ? "nav-btn active" : "nav-btn"} onClick={() => setPage("review")}>Discover</button>
-          <button className={page === "gallery" ? "nav-btn active" : "nav-btn"} onClick={() => setPage("gallery")}>Gallery</button>
-          <button className={page === "add" ? "nav-btn active" : "nav-btn"} onClick={() => setPage("add")}>+ Add</button>
-        </nav>
-      </header>
-      <main className="main">
-        {page === "review" && <Review cards={cards} setCards={setCards} loading={cardsLoading} />}
-        {page === "gallery" && <Gallery cards={cards} loading={cardsLoading} />}
-        {page === "add" && <AddCard onDone={() => { fetchCards(); setPage("review"); }} />}
-      </main>
+      <Deck session={session} status={status} inert={view !== "deck"} onSwipe={handleSwipe}
+        onRetry={retry}
+        onOpenAll={() => setView("collection")} onOpenAdd={() => setView("add")} />
+      {view === "collection" && <Collection cards={session.cards} onDelete={handleDelete} me={me} getPeople={getPeople} onSignOut={signOut} onClose={closeView} />}
+      {view === "add" && <AddCard onSave={handleAdd} onClose={closeView} />}
+      {message && <p className="toast" role="status">{message}</p>}
     </div>
   );
 }

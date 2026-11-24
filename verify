@@ -1,0 +1,35 @@
+#!/usr/bin/env sh
+# Single verification entry point: lint, unit tests, production build.
+set -eu
+
+check_state_freshness() {
+  test -f STATE.md || return 0
+  ref=$(sed -n 's/^Last verified ref: //p' STATE.md | head -n 1 || true)
+  test -n "$ref" && test "$ref" != UNVERIFIED || {
+    printf '%s\n' 'STATE.md is unverified; update it after a meaningful verification.' >&2
+    return 0
+  }
+  git rev-parse --verify "$ref^{commit}" >/dev/null 2>&1 || {
+    printf '%s\n' "STATE.md references an unavailable verified ref: $ref" >&2
+    return 0
+  }
+  if git diff --quiet "$ref" -- . ':(exclude)STATE.md'; then
+    printf '%s\n' "STATE.md is current for product files (verified ref: $ref)." >&2
+  else
+    printf '%s\n' "STATE.md is potentially stale: product files changed after verified ref $ref. Verify and update it." >&2
+  fi
+}
+
+run_project_checks() {
+  npm run lint
+  npm test
+  npm run build
+  # Sample cards must stay out of the production bundle.
+  if grep -rq '先完成，再變好' dist/assets; then
+    printf '%s\n' 'FAIL: demo cards found in the production build.' >&2
+    return 1
+  fi
+}
+
+check_state_freshness
+run_project_checks

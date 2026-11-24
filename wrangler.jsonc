@@ -1,0 +1,15 @@
+{
+  "name": "nudge",
+  "send_metrics": false,
+  "main": "worker/index.js",
+  "compatibility_date": "2026-06-01",
+  // Keeps values that were set in the dashboard, such as OWNER_CODE.
+  "keep_vars": true,
+  "routes": [{ "pattern": "nudge.astonlu.com", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": { "directory": "dist", "binding": "ASSETS", "run_worker_first": ["/api/*"], "not_found_handling": "single-page-application" },
+  "d1_databases": [{ "binding": "DB", "database_name": "nudge", "database_id": "bfb25092-59ac-4189-a56c-385d81ff46d0" }],
+  // Images are in KV, not R2: KV is part of the Workers Free plan, which stops instead of charging.
+  "kv_namespaces": [{ "binding": "IMAGES", "id": "dfe88f51ff324b5780acaa63887e2934" }]
+}
