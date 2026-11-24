@@ -2,7 +2,7 @@
 
 Status: active
 Tier: Maintained Product
-Last verified ref: e20fa4f
+Last verified ref: 4854543
 Last verified at: 2026-11-24
 
 ## Current capability
@@ -31,6 +31,8 @@ Last verified at: 2026-11-24
 - 2026-11-24, branch `three-buttons`, local: `./verify` passed (20 tests). Demo in the built-in browser at 320, 393, and 1440 px: deck, drag, collection, sort menu, template change, avatar change, member switch and add, add from a Threads link. Local Cloudflare with a throwaway database: migration 0002, avatar of owner and member, template change, refused for a member, a bad value, and without a code.
 - Deployed 2026-11-24 from commit e20fa4f (version 27919f7d); migration 0002 is on the live database. Checked: page, script, style, and font files are served; API closed without a code. Not checked live: anything after sign-in.
 - Not run: a physical iPhone (glass, keyboard with the add tools), the image picker, reduced motion, screen reader, failure messages.
+
+- Deployed 2026-11-24 from commit 4854543 (version 1432c5d4), branch `ios-top-band`: `.topband` in `src/App.jsx` turns off the iOS 26+ top blur over the header (seen on Aston's iPhone). `./verify` passed; in the built-in browser the band is what the top edge hits. Aston confirmed on the iPhone that the header is clear. The rule comes from developer reports, not Apple documents.
 
 ## Known issues / risks
 
