@@ -2,7 +2,7 @@
 
 Status: active
 Tier: Maintained Product
-Last verified ref: e20fa4f
+Last verified ref: 4854543
 Last verified at: 2026-11-24
 
 ## Current capability
@@ -32,7 +32,7 @@ Last verified at: 2026-11-24
 - Deployed 2026-11-24 from commit e20fa4f (version 27919f7d); migration 0002 is on the live database. Checked: page, script, style, and font files are served; API closed without a code. Not checked live: anything after sign-in.
 - Not run: a physical iPhone (glass, keyboard with the add tools), the image picker, reduced motion, screen reader, failure messages.
 
-- 2026-11-24, not deployed: `.topband` in `src/App.jsx` turns off the iOS 26+ top blur over the header (seen on Aston's iPhone). `./verify` passed; in the built-in browser the band is what the top edge hits. Not confirmed on an iPhone; no Simulator on this Mac. The rule comes from developer reports, not Apple documents.
+- Deployed 2026-11-24 from commit 4854543 (version 1432c5d4), branch `ios-top-band` (not pushed): `.topband` in `src/App.jsx` turns off the iOS 26+ top blur over the header (seen on Aston's iPhone). `./verify` passed; in the built-in browser the band is what the top edge hits. Not confirmed on an iPhone; no Simulator on this Mac. The rule comes from developer reports, not Apple documents.
 
 ## Known issues / risks
 
