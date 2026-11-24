@@ -14,7 +14,7 @@ Last verified at: 2026-11-24
 - Detail shows counts as bars, a ring, and a timeline. Every graphic has a text label for screen readers.
 - Failed reads, swipe saves, adds, and deletes each show a message.
 - Cloudflare backend, chosen by Aston on 2026-11-24 in place of Firebase: `worker/` (API), D1 (cards), KV (images, only with a valid code). KV, not R2, so that no paid service is needed. A code is a person and works on any device. The owner's code is the `OWNER_CODE` secret; the owner adds other codes in the app (collection, avatar). Everyone adds cards; only the owner, and people the owner allows, delete. Cards are shared; counts and ranking are per person.
-- Renamed to Nudge, "Swipe what matters" (Aston, 2026-11-24). The folder, the GitHub repo, and the old GitHub Pages address still say mneme.
+- Renamed to Nudge, "Swipe what matters" (Aston, 2026-11-24). The local folder is `Nudge`; the GitHub repo and the old GitHub Pages address still say mneme.
 - The launch cover is in `index.html` (timing from Personal CFO; the slogan in `src/slogan.svg` is single strokes traced from the Sacramento font; `src/wordmark.svg` is Newsreader Bold; both OFL). It stays until the cards are ready, at most 12 s.
 - Live at https://nudge.astonlu.com since 2026-11-24. The old GitHub Pages build is a separate site on Firebase and was not changed.
 
