@@ -141,6 +141,7 @@ export default function App() {
   }
   return (
     <div className="app" style={{ "--wash": wash }}>
+      <div className="topband" aria-hidden="true" />
       <Deck session={session} status={status} inert={view !== "deck" || adding} onSwipe={handleSwipe}
         onRetry={retry}
         onOpenAll={() => setView("collection")} onOpenAdd={() => setAdding(true)} />

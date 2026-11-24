@@ -1,5 +1,5 @@
 /* Layout: one full-screen deck; views slide over it. One light look; text on color keeps dark ink. */
-:root{color-scheme:light;--bg:#f6f5f4;--ink:#1c1c1e;--quiet:#5f5f66;--focus:#0062cc;font:17px/1.5 -apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",sans-serif;color:var(--ink);background:var(--bg)}
+:root{color-scheme:light;--bg:#f6f5f4;--ink:#1c1c1e;--quiet:#5f5f66;--focus:#0062cc;--lap:max(0px,12px - env(safe-area-inset-top));font:17px/1.5 -apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",sans-serif;color:var(--ink);background:var(--bg)}
 *{box-sizing:border-box}
 html,body,#root{height:100%}
 body,p,h2{margin:0}
@@ -9,6 +9,9 @@ button{border:0;background:none;padding:0;cursor:pointer}
 button:disabled{cursor:default}
 :focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 .app{position:relative;width:100%;max-width:480px;height:100dvh;max-height:960px;margin:0 auto;padding-top:env(safe-area-inset-top);overflow:hidden;isolation:isolate;--r:0;--l:0;--safe:max(18px,env(safe-area-inset-bottom))}
+/* iOS 26+ blurs the top of the page, header included, unless the top edge hits a fixed, full-width, plain-color box taller than 10px.
+   Keep it on top, opaque, and without pointer-events:none. --lap: how far it runs below the safe area. */
+.topband{position:fixed;z-index:40;top:0;left:0;right:0;height:max(12px,env(safe-area-inset-top));background-color:var(--bg)}
 .page{position:absolute;inset:env(safe-area-inset-top) 0 0;overflow:hidden;isolation:isolate}
 .card{position:absolute;inset:0;overflow:hidden;border-radius:30px;background:#fff;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:grab;will-change:transform;box-shadow:0 0 0 .5px rgba(20,24,32,.08),0 18px 34px -22px rgba(20,24,32,.5)}
 .ambient{position:absolute;inset:-50px;background-size:cover;background-position:center;filter:blur(36px) saturate(1.2)}
@@ -31,7 +34,7 @@ button:disabled{cursor:default}
 .art p.plate span{padding:.12em .4em;border-radius:.3em}
 .art p.ink.plate span{background:rgba(255,255,255,.78)}.art p.paper.plate span{background:rgba(0,0,0,.5)}
 /* Deck */
-.light{position:absolute;inset:0;z-index:-1;background:linear-gradient(var(--bg),transparent 76px),radial-gradient(70% 16% at 12% 93%,rgba(255,255,255,.6),transparent),radial-gradient(90% 22% at 92% 96%,color-mix(in oklab,var(--wash),#26384a 12%),transparent),var(--wash);transition:background-color .3s}
+.light{position:absolute;inset:0;z-index:-1;background:linear-gradient(var(--bg) var(--lap),transparent 76px),radial-gradient(70% 16% at 12% 93%,rgba(255,255,255,.6),transparent),radial-gradient(90% 22% at 92% 96%,color-mix(in oklab,var(--wash),#26384a 12%),transparent),var(--wash);transition:background-color .3s}
 .deck{position:absolute;inset:40px 20px calc(var(--safe) + 98px)}
 .box{position:absolute;inset:0}
 .scroll{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;display:flex;flex-direction:column}
@@ -62,10 +65,10 @@ box-shadow:inset 1.2px 1.2px .6px rgba(255,255,255,.95),inset -1.2px -1.2px .6px
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.glass,.view .glass{background:rgba(255,255,255,.86)}}
 
 /* Views. The list runs under the header, so the header glass has something to transmit. */
-.view{position:absolute;z-index:20;inset:env(safe-area-inset-top) 0 0;outline:0;animation:rise 220ms cubic-bezier(.22,1,.36,1);background:linear-gradient(var(--bg),var(--wash) 37px,var(--bg) 241px);overflow:hidden;display:flex;flex-direction:column}
-.head{position:absolute;z-index:4;top:0;left:0;right:0;display:flex;align-items:center;justify-content:flex-end;gap:12px;height:64px;padding:8px 20px 12px;pointer-events:none}
+.view{position:absolute;z-index:20;inset:env(safe-area-inset-top) 0 0;outline:0;animation:rise 220ms cubic-bezier(.22,1,.36,1);background:linear-gradient(var(--bg) var(--lap),var(--wash) calc(37px + var(--lap)),var(--bg) 241px);overflow:hidden;display:flex;flex-direction:column}
+.head{position:absolute;z-index:4;top:0;left:0;right:0;display:flex;align-items:center;justify-content:flex-end;gap:12px;height:64px;padding:max(8px,var(--lap)) 20px min(12px,20px - var(--lap));pointer-events:none}
 .head>button,.head>a{pointer-events:auto}
-.head::before{content:"";position:absolute;z-index:-1;inset:0 0 -10px;background:linear-gradient(var(--bg),transparent 34px)}
+.head::before{content:"";position:absolute;z-index:-1;inset:0 0 -10px;background:linear-gradient(var(--bg) var(--lap),transparent calc(34px + var(--lap)))}
 .head h2{font-size:26px;line-height:44px;margin-right:auto}
 .head .first{margin-right:auto}
 .head.fixed{position:relative;flex:none}.head.fixed::before{display:none}
