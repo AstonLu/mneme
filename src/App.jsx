@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { loadStore } from "./data/store";
 import { addToSession, patchCard, removeFromSession, startSession, swipe } from "./domain/session";
 import { tinyOf } from "./lib/image";
+import { useWash } from "./lib/light";
 import AddCard from "./pages/AddCard";
 import Collection from "./pages/Collection";
 import { liftLaunch } from "./lib/launch";
@@ -11,7 +12,8 @@ import SignIn from "./pages/SignIn";
 const context = () => ({ now: Date.now(), random: Math.random });
 
 export default function App() {
-  const [view, setView] = useState("deck"); // deck | collection | add
+  const [view, setView] = useState("deck"); // deck | collection
+  const [adding, setAdding] = useState(false);
   const [status, setStatus] = useState("loading"); // loading | signedout | ready | error
   const [session, setSession] = useState(null);
   const [message, setMessage] = useState("");
@@ -30,6 +32,7 @@ export default function App() {
     run.current += 1;
     commit(null);
     setMe(null);
+    setAdding(false);
     setView("deck");
     setMessage("");
     setStatus("signedout");
@@ -62,6 +65,7 @@ export default function App() {
   useEffect(() => { load(); }, [load]);
 
   const topId = session?.top?.id;
+  const wash = useWash(session?.cards.find((c) => c.id === topId));
   useEffect(() => {
     if (status !== "loading") liftLaunch(current.current?.cards.find((c) => c.id === topId)?.imageUrl);
   }, [status, topId]);
@@ -98,6 +102,7 @@ export default function App() {
   const handleAdd = async (draft) => {
     const card = await store.current.addCard(draft);
     commit(addToSession(current.current, card, context()));
+    setAdding(false);
     setView("deck");
     setMessage("已加入");
   };
@@ -108,6 +113,26 @@ export default function App() {
     setMessage("已刪除");
   };
 
+  const handleTemplate = async (card, template) => {
+    const back = card.template;
+    commit(patchCard(current.current, card.id, { template }));
+    try {
+      await store.current.setTemplate(card.id, template);
+    } catch (err) {
+      console.error(err);
+      if (err.status === 401) { clear(); return; }
+      if (current.current?.cards.find((c) => c.id === card.id)?.template === template) {
+        commit(patchCard(current.current, card.id, { template: back }));
+      }
+      setMessage("模板沒有存到");
+    }
+  };
+
+  const handleAvatar = async (avatar) => {
+    await store.current.setAvatar(avatar);
+    setMe((person) => ({ ...person, avatar }));
+  };
+
   const getPeople = useCallback(() => store.current.people, []);
   const closeView = useCallback(() => setView("deck"), []);
 
@@ -115,12 +140,12 @@ export default function App() {
     return <div className="app"><SignIn onSignIn={signIn} onEnter={load} /></div>;
   }
   return (
-    <div className="app">
-      <Deck session={session} status={status} inert={view !== "deck"} onSwipe={handleSwipe}
+    <div className="app" style={{ "--wash": wash }}>
+      <Deck session={session} status={status} inert={view !== "deck" || adding} onSwipe={handleSwipe}
         onRetry={retry}
-        onOpenAll={() => setView("collection")} onOpenAdd={() => setView("add")} />
-      {view === "collection" && <Collection cards={session.cards} onDelete={handleDelete} me={me} getPeople={getPeople} onSignOut={signOut} onClose={closeView} />}
-      {view === "add" && <AddCard onSave={handleAdd} onClose={closeView} />}
+        onOpenAll={() => setView("collection")} onOpenAdd={() => setAdding(true)} />
+      {view === "collection" && <Collection inert={adding} cards={session.cards} onDelete={handleDelete} me={me} getPeople={getPeople} onSignOut={signOut} onAdd={() => setAdding(true)} onTemplate={handleTemplate} onAvatar={handleAvatar} onClose={closeView} />}
+      {adding && <AddCard onSave={handleAdd} onClose={() => setAdding(false)} />}
       {message && <p className="toast" role="status">{message}</p>}
     </div>
   );

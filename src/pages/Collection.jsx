@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Thumb } from "../components/CardFace";
 import Avatar from "../components/Avatar";
-import Glass, { Icon } from "../components/Glass";
+import { Thumb } from "../components/CardFace";
+import Glass, { Icon, MarkButton } from "../components/Glass";
 import View from "../components/View";
 import { seenCount, sortCards } from "../domain/rank";
 import { formatDay, formatRatio } from "../lib/format";
@@ -28,13 +28,14 @@ function Bar({ card, most }) {
 
 const describe = (card) => `${card.content || "圖片卡片"}，喜歡率 ${formatRatio(card)}，滑到 ${seenCount(card)} 次，加入 ${formatDay(card.createdAt)}`;
 
-export default function Collection({ cards, me, getPeople, onDelete, onSignOut, onClose }) {
+export default function Collection({ cards, me, getPeople, inert, onAdd, onTemplate, onAvatar, onDelete, onSignOut, onClose }) {
   const [sort, setSort] = useState({ key: "ratio", ascending: false });
   const [menu, setMenu] = useState(false);
   const [account, setAccount] = useState(false);
   const [openId, setOpenId] = useState(null);
   const menuRef = useRef(null);
   const sorter = useRef(null);
+  const title = useRef(null);
   const opened = cards.find((c) => c.id === openId);
   const most = Math.max(1, ...cards.map(seenCount));
   const order = sort.ascending ? "由低到高" : "由高到低";
@@ -46,11 +47,16 @@ export default function Collection({ cards, me, getPeople, onDelete, onSignOut, 
 
   return (
     <>
-      <View label="收藏" onClose={menu ? closeMenu : onClose} inert={Boolean(opened) || account} onClick={() => setMenu(false)}>
-        <button ref={sorter} type="button" className="glass pill float" aria-haspopup="menu" aria-expanded={menu}
-          aria-label={`排序：${SORTS[sort.key][0]}，${order}`} onClick={(e) => { e.stopPropagation(); setMenu((m) => !m); }}>
-          <Icon name={SORTS[sort.key][1]} /><Icon name={sort.ascending ? "up" : "down"} />
-        </button>
+      <View label="收藏" onClose={menu ? closeMenu : onClose} inert={inert || Boolean(opened) || account} onClick={() => setMenu(false)}>
+        <div className="head">
+          <h2 ref={title}>收藏</h2>
+          <Glass icon="add" label="新增" className="round" onClick={onAdd} />
+          <button ref={sorter} type="button" className="glass pill" aria-haspopup="menu" aria-expanded={menu}
+            aria-label={`排序：${SORTS[sort.key][0]}，${order}`} onClick={(e) => { e.stopPropagation(); setMenu((m) => !m); }}>
+            <Icon name={SORTS[sort.key][1]} /><Icon name={sort.ascending ? "up" : "down"} />
+          </button>
+          <button type="button" className="avatarbtn" aria-label={`帳號 ${me.code}`} onClick={() => setAccount(true)}><Avatar code={me.code} avatar={me.avatar} /></button>
+        </div>
         {menu && (
           <div ref={menuRef} className="menu" role="menu" onClick={(e) => e.stopPropagation()}>
             {Object.entries(SORTS).map(([key, [text, icon]]) => (
@@ -61,11 +67,7 @@ export default function Collection({ cards, me, getPeople, onDelete, onSignOut, 
             <button type="button" role="menuitemradio" aria-checked={sort.ascending} onClick={() => choose({ ascending: true })}><Icon name="up" />由低到高</button>
           </div>
         )}
-        <div className="body under">
-          <div className="titlerow">
-            <h2>收藏</h2>
-            <button type="button" className="avatarbtn" aria-label={`帳號 ${me.code}`} onClick={() => setAccount(true)}><Avatar code={me.code} /></button>
-          </div>
+        <div className="body" onScroll={(e) => { title.current.style.opacity = Math.max(0, 1 - e.currentTarget.scrollTop / 28); }}>
           {cards.length === 0 && <p>還沒有卡片</p>}
           <div className="grid">
             {sortCards(cards, sort.key, sort.ascending).map((card) => (
@@ -76,11 +78,11 @@ export default function Collection({ cards, me, getPeople, onDelete, onSignOut, 
             ))}
           </div>
         </div>
-        <Glass icon="deck" label="回到滑卡" className="corner all" data-focus onClick={onClose} />
+        <div className="row3"><MarkButton label="回到滑卡" data-focus onClick={onClose} /></div>
       </View>
-      {account && <Account me={me} getPeople={getPeople} onSignOut={onSignOut} onClose={() => setAccount(false)} />}
+      {account && <Account me={me} onAvatar={onAvatar} getPeople={getPeople} onSignOut={onSignOut} onClose={() => setAccount(false)} />}
       {opened && (
-        <Detail card={opened} canDelete={me.canDelete} onClose={() => setOpenId(null)}
+        <Detail card={opened} canDelete={me.canDelete} onTemplate={(template) => onTemplate(opened, template)} onClose={() => setOpenId(null)}
           onDelete={async () => { await onDelete(opened); setOpenId(null); }} />
       )}
     </>

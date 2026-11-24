@@ -1,8 +1,9 @@
+import { cleanAvatar } from "../src/domain/avatars.js";
 import { cleanCode } from "./code.js";
 
 const OWNER = "owner"; // the owner's counts stay when the owner's code changes
 
-const toPerson = (row) => row && { id: row.id, code: row.code, owner: false, canDelete: Boolean(row.can_delete) };
+const toPerson = (row) => row && { id: row.id, code: row.code, owner: false, canDelete: Boolean(row.can_delete), avatar: cleanAvatar(row.avatar) };
 const ownerOf = (env) => ({ id: OWNER, code: cleanCode(env.OWNER_CODE), owner: true, canDelete: true });
 
 export async function personByCode(env, code) {
@@ -36,6 +37,20 @@ export async function addPerson(env, code) {
 export async function setCanDelete(env, id, allowed) {
   const { meta } = await env.DB.prepare("UPDATE people SET can_delete = ? WHERE id = ?").bind(allowed ? 1 : 0, id).run();
   return meta.changes > 0;
+}
+
+const OWNER_AVATAR = "owner-avatar"; // the owner has no row in people
+
+export async function avatarOf(env, person) {
+  if (!person.owner) return person.avatar;
+  const row = await env.DB.prepare("SELECT value FROM settings WHERE key = ?").bind(OWNER_AVATAR).first();
+  return cleanAvatar(row?.value);
+}
+
+export async function setAvatar(env, person, avatar) {
+  await (person.owner
+    ? env.DB.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").bind(OWNER_AVATAR, avatar)
+    : env.DB.prepare("UPDATE people SET avatar = ? WHERE id = ?").bind(avatar, person.id)).run();
 }
 
 export async function removePerson(env, id) {

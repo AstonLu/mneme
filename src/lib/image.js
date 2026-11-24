@@ -33,22 +33,25 @@ export async function readImage(file) {
     const type = file.type === "image/png" ? "image/png" : "image/jpeg";
     const blob = await new Promise((resolve) => drawTo(image, width, height).toBlob(resolve, type, 0.88));
     if (!blob) throw new Error("image encode failed");
-    return { blob, url: URL.createObjectURL(blob), ratio: height / width, tiny: drawTo(image, 4, 5).toDataURL() };
+    return { blob, url: URL.createObjectURL(blob), tiny: drawTo(image, 4, 5).toDataURL() };
   } finally {
     URL.revokeObjectURL(source);
   }
 }
 
-const toLinear = (v) => (v / 255 <= 0.04045 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4);
-
-/** Is the bottom of a card dark? `white` is how much white lies over it on screen. Icons on glass follow this. */
-export async function isDarkBottom(tiny, white) {
-  const context = drawTo(await load(tiny), 4, 5).getContext("2d");
-  const { data } = context.getImageData(0, 4, 4, 1);
-  let sum = 0;
-  for (let i = 0; i < data.length; i += 4) {
-    const [r, g, b] = [0, 1, 2].map((k) => toLinear(data[i + k] * (1 - white) + 255 * white));
-    sum += 0.2126 * r + 0.7152 * g + 0.0722 * b;
+/** A light version of the color around the edge of a tiny copy: the backdrop of the picture, not its subject. */
+export async function edgeOf(tiny) {
+  const { data } = drawTo(await load(tiny), 4, 5).getContext("2d").getImageData(0, 0, 4, 5);
+  const sum = [0, 0, 0];
+  let n = 0;
+  for (let i = 0; i < 20; i += 1) {
+    if (i >= 4 && i % 4 !== 0 && i % 4 !== 3) continue; // the top row and both sides
+    for (let k = 0; k < 3; k += 1) sum[k] += data[i * 4 + k];
+    n += 1;
   }
-  return sum / 4 < 0.2;
+  const color = sum.map((v) => v / n);
+  // Add only as much white as the dark icons and text need.
+  const mean = (color[0] + color[1] + color[2]) / 3;
+  const white = Math.max(0.35, (208 - mean) / (246 - mean));
+  return `rgb(${color.map((v) => Math.round(v + (246 - v) * white)).join(", ")})`;
 }

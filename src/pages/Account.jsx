@@ -3,13 +3,48 @@ import Avatar from "../components/Avatar";
 import Confirm from "../components/Confirm";
 import Glass, { Icon } from "../components/Glass";
 import View from "../components/View";
+import { AVATARS } from "../domain/avatars";
 
-/** Your code, sign-out, and for the owner: who else has a code and who may delete cards. */
-export default function Account({ me, getPeople, onSignOut, onClose }) {
+function AvatarPicker({ me, onSave, onClose }) {
+  const [chosen, setChosen] = useState(me.avatar);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const save = async () => {
+    if (!chosen || chosen === me.avatar) { onClose(); return; }
+    setBusy(true);
+    setFailed(false);
+    try {
+      await onSave(chosen);
+      onClose();
+    } catch (err) {
+      console.error(err);
+      setFailed(true);
+      setBusy(false);
+    }
+  };
+  return (
+    <View className="scrim" label="選頭像" onClose={busy ? undefined : onClose}
+      onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }}>
+      <div className="sheet picker">
+        <div className="now"><Avatar code={me.code} avatar={chosen} size={112} pop /></div>
+        <div className="picks">
+          {Object.entries(AVATARS).map(([key, name]) => (
+            <button key={key} type="button" aria-label={name} aria-pressed={key === chosen} onClick={() => setChosen(key)}><Avatar avatar={key} size={80} /></button>
+          ))}
+        </div>
+        {failed && <p className="err" role="alert">頭像沒有存到，請再試一次</p>}
+        <button type="button" className="primary" data-focus disabled={busy} onClick={save}>{busy ? "儲存中" : "完成"}</button>
+      </div>
+    </View>
+  );
+}
+
+/** Your code, avatar, sign-out, and for the owner: who else has a code and who may delete cards. */
+export default function Account({ me, getPeople, onAvatar, onSignOut, onClose }) {
   const [list, setList] = useState(null); // null while loading
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [asking, setAsking] = useState(null); // "leave" | a person to remove
+  const [asking, setAsking] = useState(null); // "leave" | "avatar" | a person to remove
 
   useEffect(() => {
     if (!me.owner) return undefined;
@@ -50,27 +85,33 @@ export default function Account({ me, getPeople, onSignOut, onClose }) {
   return (
     <>
       <View label="帳號" onClose={onClose} inert={Boolean(asking)}>
-        <Glass icon="back" label="回到收藏" className="round float left" data-focus onClick={onClose} />
-        <Glass icon="leave" label="登出" className="round float" onClick={() => setAsking("leave")} />
+        <div className="head">
+          <Glass icon="back" label="回到收藏" className="round first" data-focus onClick={onClose} />
+          <Glass icon="leave" label="登出" className="round" onClick={() => setAsking("leave")} />
+        </div>
         <div className="body account">
-          <Avatar code={me.code} big />
+          <button type="button" className="avatarbtn mine" aria-label="更換頭像" onClick={() => setAsking("avatar")}><Avatar code={me.code} avatar={me.avatar} size={112} /></button>
           <h2>{me.code}</h2>
           {me.owner && (
             <section aria-label="成員">
               {list?.map((person) => (
                 <div className="person" key={person.id}>
-                  <Avatar code={person.code} />
+                  <Avatar code={person.code} avatar={person.avatar} size={40} />
                   <span>{person.code}</span>
-                  <button type="button" className="chip" aria-pressed={person.canDelete} disabled={busy}
-                    aria-label={`${person.code} 可以刪除卡片`} onClick={() => toggle(person)}>可刪卡</button>
-                  <button type="button" className="chip plain" disabled={busy} aria-label={`移除 ${person.code}`} onClick={() => setAsking(person)}><Icon name="no" /></button>
+                  <small aria-hidden="true">可刪卡</small>
+                  <button type="button" className="switch" role="switch" aria-checked={person.canDelete} disabled={busy}
+                    aria-label={`${person.code} 可以刪除卡片`} onClick={() => toggle(person)}><i /></button>
+                  <button type="button" className="more" disabled={busy} aria-label={`移除 ${person.code}`} onClick={() => setAsking(person)}><Icon name="more" /></button>
                 </div>
               ))}
               {list && (
-                <form className="person" onSubmit={add}>
-                  <input name="code" aria-label="新成員的 code" placeholder="新成員的 code" maxLength="40" autoComplete="off"
-                    autoCapitalize="none" autoCorrect="off" spellCheck="false" required />
-                  <button type="submit" className="chip" disabled={busy} aria-label="加入成員"><Icon name="add" /></button>
+                <form className="person join" onSubmit={add}>
+                  <label>
+                    <i aria-hidden="true"><Icon name="add" /></i>
+                    <input name="code" aria-label="新成員的 code" placeholder="新成員的 code" maxLength="40" autoComplete="off"
+                      autoCapitalize="none" autoCorrect="off" spellCheck="false" required />
+                  </label>
+                  <button type="submit" className="act" disabled={busy}>加入</button>
                 </form>
               )}
               {!list && !error && <p>讀取中</p>}
@@ -79,6 +120,7 @@ export default function Account({ me, getPeople, onSignOut, onClose }) {
           {error && <p className="err" role="alert">{error}</p>}
         </div>
       </View>
+      {asking === "avatar" && <AvatarPicker me={me} onSave={onAvatar} onClose={() => setAsking(null)} />}
       {asking === "leave" && <Confirm title="要登出嗎？" action="登出" keep="取消" onConfirm={onSignOut} onClose={() => setAsking(null)} />}
       {asking?.id && (
         <Confirm title={`移除 ${asking.code}？滑卡紀錄會一起刪除`} action="移除" keep="保留" onClose={() => setAsking(null)}

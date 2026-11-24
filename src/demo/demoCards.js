@@ -17,10 +17,11 @@ export const demoCards = [
   card("lamp", { imageUrl: lamp, content: "看不清全程時，先照亮下一步就好。" }),
   card("ridge", { imageUrl: ridge, content: "休息也算在路程裡。" }),
   card("seed", { imageUrl: seed }),
-  card("short", { content: "先完成，再變好。" }),
-  card("medium", { content: "你不需要每天都有進步。\n有些日子，沒有放棄就已經很好了。" }),
-  card("link", { content: "把想做的事寫下來，然後刪到只剩今天做得完的。", link: "https://example.com/" }),
+  card("short", { template: "lyric", content: "先完成，再變好。" }),
+  card("medium", { template: "tweet", author: "範例作者", handle: "example", content: "你不需要每天都有進步。\n有些日子，沒有放棄就已經很好了。" }),
+  card("link", { template: "memo", content: "把想做的事寫下來，然後刪到只剩今天做得完的。", link: "https://example.com/" }),
   card("long", {
+    template: "thread", handle: "example",
     content: [
       "我以前覺得忙代表重要，所以把行事曆填得很滿。後來有一次連續開了六個會，回家以後想不起來任何一個會議的結論。",
       "那天我開始做一個很小的練習：每件事結束以後，留五分鐘，只寫一句「這件事改變了什麼」。寫不出來的，下次就不去。",

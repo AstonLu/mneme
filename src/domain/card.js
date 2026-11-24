@@ -1,3 +1,5 @@
+import { cleanTemplate } from "./templates.js";
+
 // The card shape that every screen uses, whatever the stored version looks like.
 const millis = (v) => (typeof v === "number" ? v : v?.toMillis?.() ?? null);
 
@@ -10,6 +12,9 @@ export function normalizeCard(raw) {
     link: raw.link || "",
     imageUrl: raw.imageUrl || null,
     art: raw.art || null,
+    template: cleanTemplate(raw.template),
+    author: raw.author || "",
+    handle: raw.handle || "",
     tiny: raw.tiny || null,
     likes: raw.likes ?? boostCount ?? 0,
     skips: raw.skips ?? noteCount ?? 0,
@@ -25,7 +30,3 @@ export function isWebLink(value) {
     return false;
   }
 }
-
-// Text longer than this with no image becomes a scrolling card without a layout.
-export const LONG_TEXT = 100;
-export const isLongText = (card) => !card.imageUrl && card.content.length > LONG_TEXT;

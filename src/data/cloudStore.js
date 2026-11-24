@@ -25,15 +25,23 @@ export const cloudStore = {
     return { me, cards: cards.map(normalizeCard) };
   },
 
-  async addCard({ content, link, art, tiny, blob }) {
+  async addCard({ content, link, template, author, handle, tiny, blob }) {
     const form = new FormData();
-    form.set("card", JSON.stringify({ content, link, art, tiny }));
+    form.set("card", JSON.stringify({ content, link, template, author, handle, tiny }));
     if (blob) form.set("image", blob, "image");
     return normalizeCard(await call("cards", { method: "POST", body: form }));
   },
 
   async swipeCard(id, direction) {
     await call(`cards/${id}/swipe`, json("POST", { direction }));
+  },
+
+  async setTemplate(id, template) {
+    await call(`cards/${id}`, json("PATCH", { template }));
+  },
+
+  async setAvatar(avatar) {
+    await call("me", json("PATCH", { avatar }));
   },
 
   async deleteCard(card) {
