@@ -2,12 +2,12 @@
 
 Status: active
 Tier: Maintained Product
-Last verified ref: UNVERIFIED
-Last verified at: UNVERIFIED
+Last verified ref: e20fa4f
+Last verified at: 2026-11-24
 
 ## Current capability
 
-- The prototype `docs/mockups/nudge-next.html`, approved by Aston on 2026-11-24, is in the app but not deployed: three glass buttons (skip, collection, like), add inside the collection, two-step add, six text templates, six avatars. Ranking comes from `src/domain/rank.js`.
+- The prototype `docs/mockups/nudge-next.html`, approved by Aston on 2026-11-24, is in the app and live: three glass buttons (skip, collection, like), add inside the collection, two-step add, six text templates, six avatars. Ranking comes from `src/domain/rank.js`.
 - Text cards use `card.template` (default `plain`). Only people who may delete can change it later, in the detail page. The old free layout editor is gone: image cards saved with `art` keep their layout; text cards show a template.
 - Glass needs something to transmit: the page takes a light color from the current card (`src/lib/light.js`), and lists run under the header.
 - The 書摘 font (Noto Serif TC, OFL) is self-hosted and loads only when a book card is on screen.
@@ -29,7 +29,8 @@ Last verified at: UNVERIFIED
 - Not run: a physical iPhone (Safari and Home Screen), the save and delete failure messages, reduced motion, screen reader, the launch cover on a slow network, real speed of the launch animation.
 
 - 2026-11-24, branch `three-buttons`, local: `./verify` passed (20 tests). Demo in the built-in browser at 320, 393, and 1440 px: deck, drag, collection, sort menu, template change, avatar change, member switch and add, add from a Threads link. Local Cloudflare with a throwaway database: migration 0002, avatar of owner and member, template change, refused for a member, a bad value, and without a code.
-- Not run on this branch: a physical iPhone (glass, keyboard with the add tools), the image picker, reduced motion, screen reader, failure messages, a live deployment.
+- Deployed 2026-11-24 from commit e20fa4f (version 27919f7d); migration 0002 is on the live database. Checked: page, script, style, and font files are served; API closed without a code. Not checked live: anything after sign-in.
+- Not run: a physical iPhone (glass, keyboard with the add tools), the image picker, reduced motion, screen reader, failure messages.
 
 ## Known issues / risks
 
@@ -41,5 +42,5 @@ Last verified at: UNVERIFIED
 
 ## Next actions
 
-- Deploy: apply migration 0002 to the live database (`wrangler d1 migrations apply nudge --remote`) before `npm run deploy`.
+- Merge `three-buttons` to main (local commits, not pushed).
 - Check the app on a physical iPhone.
