@@ -5,7 +5,6 @@ import { db, storage } from "../firebase";
 
 export default function AddCard({ onDone }) {
   const [content, setContent] = useState("");
-  const [note, setNote] = useState("");
   const [link, setLink] = useState("");
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -31,13 +30,14 @@ export default function AddCard({ onDone }) {
       }
       await addDoc(collection(db, "cards"), {
         content: content.trim(),
-        note: note.trim(),
         link: link.trim(),
         imageUrl,
         weight: 1,
+        boostCount: 0,
+        noteCount: 0,
         createdAt: serverTimestamp(),
       });
-      setContent(""); setNote(""); setLink("");
+      setContent(""); setLink("");
       setImage(null); setImagePreview(null);
       onDone();
     } catch (err) {
@@ -50,14 +50,14 @@ export default function AddCard({ onDone }) {
 
   return (
     <div className="add-card">
-      <h2>新增卡片</h2>
+      <h2>Capture</h2>
       <div className="field">
         <label>內容</label>
         <textarea
           placeholder="輸入一段話、洞察或知識..."
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          rows={4}
+          rows={5}
         />
       </div>
       <div className="field">
@@ -74,21 +74,12 @@ export default function AddCard({ onDone }) {
           onChange={(e) => setLink(e.target.value)}
         />
       </div>
-      <div className="field">
-        <label>我的心得（選填）</label>
-        <textarea
-          placeholder="這對我的意義是..."
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          rows={3}
-        />
-      </div>
       <button
         className="submit-btn"
         onClick={handleSubmit}
         disabled={loading || (!content.trim() && !image)}
       >
-        {loading ? "儲存中..." : "儲存卡片"}
+        {loading ? "儲存中..." : "Save"}
       </button>
     </div>
   );

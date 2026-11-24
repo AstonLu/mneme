@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
+import { useState, useEffect, useRef } from "react";
+import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import TinderCard from "react-tinder-card";
 
@@ -13,78 +13,89 @@ function weightedRandom(cards) {
   return cards[cards.length - 1];
 }
 
-export default function Review() {
-  const [cards, setCards] = useState([]);
+export default function Review({ cards, setCards, loading }) {
   const [current, setCurrent] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [showNote, setShowNote] = useState(false);
-  const [swipeResult, setSwipeResult] = useState(null);
+  const [swiping, setSwiping] = useState(false);
+  const [popup, setPopup] = useState(null);
+  const cardRef = useRef(null);
+  const cardsRef = useRef(cards);
+  const popupTimer = useRef(null);
 
-  useEffect(() => { fetchCards(); }, []);
+  useEffect(() => { cardsRef.current = cards; }, [cards]);
 
-  const fetchCards = async () => {
-    setLoading(true);
-    try {
-      const snapshot = await getDocs(collection(db, "cards"));
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setCards(data);
-      if (data.length > 0) setCurrent(weightedRandom(data));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (cards.length > 0 && !current) {
+      setCurrent(weightedRandom(cards));
     }
-  };
+  }, [cards]);
 
   const handleSwipe = async (direction) => {
     if (!current) return;
-    const isImportant = direction === "right";
-    setSwipeResult(isImportant ? "重要 ⭐" : "普通");
+    const isBoost = direction === "right";
 
-    const newWeight = isImportant
-      ? Math.min((current.weight || 1) + 2, 5)
+    if (popupTimer.current) clearTimeout(popupTimer.current);
+    setPopup(isBoost ? "Boost" : "Pass");
+    popupTimer.current = setTimeout(() => setPopup(null), 700);
+
+    const newWeight = isBoost
+      ? Math.min((current.weight || 1) + 2, 10)
       : Math.max((current.weight || 1) - 1, 1);
+    const newBoostCount = isBoost ? (current.boostCount || 0) + 1 : (current.boostCount || 0);
+    const newNoteCount = !isBoost ? (current.noteCount || 0) + 1 : (current.noteCount || 0);
 
     try {
-      await updateDoc(doc(db, "cards", current.id), { weight: newWeight });
+      await updateDoc(doc(db, "cards", current.id), {
+        weight: newWeight,
+        boostCount: newBoostCount,
+        noteCount: newNoteCount,
+      });
     } catch (err) {
       console.error(err);
     }
 
-    const updatedCards = cards.map(c =>
-      c.id === current.id ? { ...c, weight: newWeight } : c
+    const updatedCards = cardsRef.current.map(c =>
+      c.id === current.id
+        ? { ...c, weight: newWeight, boostCount: newBoostCount, noteCount: newNoteCount }
+        : c
     );
     setCards(updatedCards);
-
-    setTimeout(() => {
-      setSwipeResult(null);
-      setShowNote(false);
-      setCurrent(weightedRandom(updatedCards));
-    }, 500);
   };
 
-  if (loading) return <div className="empty-state">載入中...</div>;
+  const handleCardLeftScreen = () => {
+    setSwiping(false);
+    setCurrent(weightedRandom(cardsRef.current));
+  };
 
-  if (!current) return (
+  const swipe = async (dir) => {
+    if (swiping || !cardRef.current) return;
+    setSwiping(true);
+    await cardRef.current.swipe(dir);
+  };
+
+  if (loading) return <div className="empty-state"><p>載入中...</p></div>;
+  if (cards.length === 0) return (
     <div className="empty-state">
       <p>還沒有卡片</p>
-      <p>點右上角 + 新增你的第一張卡片</p>
+      <p>點上方 Add 新增你的第一張</p>
     </div>
   );
+  if (!current) return <div className="empty-state"><p>載入中...</p></div>;
 
   return (
     <div className="review">
+      {popup && (
+        <div key={popup + Date.now()} className="swipe-popup">{popup}</div>
+      )}
       <div className="card-area">
-        {swipeResult && (
-          <div className={`swipe-label ${swipeResult.includes("重要") ? "right" : "left"}`}>
-            {swipeResult}
-          </div>
-        )}
         <TinderCard
-          key={current.id + Math.random()}
+          ref={cardRef}
+          key={current.id}
           onSwipe={handleSwipe}
+          onCardLeftScreen={handleCardLeftScreen}
           preventSwipe={["up", "down"]}
           className="tinder-card-wrapper"
+          swipeRequirementType="position"
+          swipeThreshold={40}
         >
           <div className="card">
             {current.imageUrl && (
@@ -98,26 +109,18 @@ export default function Review() {
                 查看原文 →
               </a>
             )}
-            {current.note && (
-              <button className="note-toggle" onClick={() => setShowNote(!showNote)}>
-                {showNote ? "收起心得" : "查看我的心得"}
-              </button>
-            )}
-            {showNote && current.note && (
-              <p className="card-note">{current.note}</p>
-            )}
           </div>
         </TinderCard>
       </div>
 
       <div className="swipe-hint">
-        <span>← 普通</span>
-        <span>重要 →</span>
+        <span>← Pass</span>
+        <span>Boost →</span>
       </div>
 
       <div className="manual-buttons">
-        <button className="btn-left" onClick={() => handleSwipe("left")}>普通</button>
-        <button className="btn-right" onClick={() => handleSwipe("right")}>重要 ⭐</button>
+        <button className="btn-left" onClick={() => swipe("left")} disabled={swiping}>Pass</button>
+        <button className="btn-right" onClick={() => swipe("right")} disabled={swiping}>Boost</button>
       </div>
     </div>
   );
