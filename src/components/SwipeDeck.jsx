@@ -2,7 +2,7 @@ import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, u
 import { CardFace } from "./CardFace";
 
 const EDGE = 24; // Safari owns the screen edge for back and forward
-const stacked = (p) => `translateY(${30 * (1 - p)}px) scale(${0.94 + 0.06 * p})`;
+const stacked = (p) => `translateY(${28 * (1 - p)}px) scale(${0.94 + 0.06 * p})`;
 const calm = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
@@ -75,7 +75,9 @@ function SwipeCard({ entry, card, role, handle, nodeRef, peek, onLeave, onGone, 
     const frames = calm() ? [{ opacity: 1 }, { opacity: 0 }]
       : [{ transform: el.style.transform || "none" }, { transform: `translateX(${to}px) rotate(${sign * 14}deg)` }];
     const done = () => onGone(entry.key);
-    el.animate(frames, { duration: ms, easing: "cubic-bezier(.2,.6,.4,1)", fill: "forwards" }).finished.then(done, done);
+    el.animate(frames, { duration: ms, easing: "cubic-bezier(.2,.6,.4,1)", fill: "forwards" });
+    // Not `finished`: that promise waits while the page is in the background.
+    setTimeout(done, ms);
     onSignal(0);
     onLeave(sign > 0 ? "right" : "left", entry, card);
   }, [card, entry, onGone, onLeave, onSignal]);

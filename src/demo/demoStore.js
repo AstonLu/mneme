@@ -12,7 +12,8 @@ const HISTORY = {
 export function createDemoStore() {
   const now = Date.now();
   let signedIn = true;
-  let people = [{ id: "a", code: "sample", canDelete: false }];
+  let people = [{ id: "a", code: "sample", canDelete: false, avatar: "moon" }];
+  let avatar = "bean";
   let cards = demoCards.map((c) => {
     const [likes, skips, added, seen] = HISTORY[c.id.replace("demo-", "")];
     return normalizeCard({ ...c, likes, skips, createdAt: now - added * DAY, lastSeenAt: now - seen * DAY });
@@ -25,7 +26,7 @@ export function createDemoStore() {
     people: {
       async list() { return people; },
       async add(code) {
-        const person = { id: crypto.randomUUID(), code: code.trim().toLowerCase(), canDelete: false };
+        const person = { id: crypto.randomUUID(), code: code.trim().toLowerCase(), canDelete: false, avatar: null };
         people = [...people, person];
         return person;
       },
@@ -34,7 +35,7 @@ export function createDemoStore() {
     },
     async load() {
       if (!signedIn) throw Object.assign(new Error("signed out"), { status: 401 });
-      return { me: { code: "demo", owner: true, canDelete: true }, cards };
+      return { me: { code: "demo", owner: true, canDelete: true, avatar }, cards };
     },
     async addCard({ blob, imageUrl, ...draft }) {
       const card = normalizeCard({
@@ -47,6 +48,10 @@ export function createDemoStore() {
     async swipeCard(id, direction, patch) {
       cards = cards.map((c) => (c.id === id ? { ...c, ...patch } : c));
     },
+    async setTemplate(id, template) {
+      cards = cards.map((c) => (c.id === id ? { ...c, template } : c));
+    },
+    async setAvatar(next) { avatar = next; },
     async deleteCard({ id }) {
       cards = cards.filter((c) => c.id !== id);
     },

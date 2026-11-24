@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
-import { Light } from "../components/CardFace";
-import Glass from "../components/Glass";
+import Glass, { MarkButton } from "../components/Glass";
 import Notice from "../components/Notice";
 import SwipeDeck from "../components/SwipeDeck";
-import { useTone } from "../lib/useTone";
 
 export default function Deck({ session, status, onSwipe, onRetry, onOpenAll, onOpenAdd, inert }) {
   const root = useRef(null);
@@ -40,27 +38,25 @@ export default function Deck({ session, status, onSwipe, onRetry, onOpenAll, onO
     return () => window.removeEventListener("keydown", onKey);
   }, [inert]);
 
-  const topCard = top && session.cards.find((c) => c.id === top.id);
-  const tone = useTone(topCard);
-
   let notice = null;
   if (status === "loading") notice = <Notice title="載入中" />;
   else if (status === "error") notice = <Notice title="卡片讀取失敗" detail="請檢查網路" action="重試" onAction={onRetry} />;
   else if (!top) notice = <Notice title="還沒有卡片" action="新增第一張" onAction={onOpenAdd} />;
 
   return (
-    <main ref={root} className={`page ${tone}`} inert={inert}>
-      {topCard && <Light card={topCard} />}
+    <main ref={root} className="page" inert={inert}>
+      <div className="light" />
       {notice ?? (
         <SwipeDeck ref={deck} cards={session.cards} top={top} under={session.under}
           onSwipe={handleSwipe} onSignal={signal} onSettle={settle} />
       )}
       <div className="edge er" />
       <div className="edge el" />
-      <Glass icon="add" label="新增" className="corner add" disabled={status !== "ready"} onClick={onOpenAdd} />
-      <Glass icon="no" label="略過" className="no" disabled={!top} onClick={() => deck.current?.swipe("left")} />
-      <Glass icon="yes" label="多看到" className="yes" disabled={!top} onClick={() => deck.current?.swipe("right")} />
-      <Glass icon="all" label="收藏" className="corner all" disabled={status !== "ready"} onClick={onOpenAll} />
+      <div className="row3">
+        <Glass icon="no" label="略過" className="big no" disabled={!top} onClick={() => deck.current?.swipe("left")} />
+        <MarkButton label="收藏" disabled={status !== "ready"} onClick={onOpenAll} />
+        <Glass icon="yes" label="多看到" className="big yes" disabled={!top} onClick={() => deck.current?.swipe("right")} />
+      </div>
     </main>
   );
 }

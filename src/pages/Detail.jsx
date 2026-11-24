@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Thumb } from "../components/CardFace";
+import { CardFace } from "../components/CardFace";
 import Confirm from "../components/Confirm";
 import Glass, { Icon } from "../components/Glass";
+import TemplateStrip from "../components/TemplateStrip";
 import View from "../components/View";
 import { isWebLink } from "../domain/card";
 import { likeRatio, seenCount } from "../domain/rank";
@@ -21,22 +22,23 @@ function Moment({ icon, time }) {
   return <div><Icon name={icon} /><span>{time ? formatDay(time) : "–"}</span></div>;
 }
 
-export default function Detail({ card, canDelete, onDelete, onClose }) {
+export default function Detail({ card, canDelete, onTemplate, onDelete, onClose }) {
   const [asking, setAsking] = useState(false);
   const times = seenCount(card);
   const most = Math.max(card.likes, card.skips, 1);
   return (
     <>
       <View label="卡片紀錄" onClose={onClose} inert={asking}>
-        <Glass icon="back" label="回到收藏" className="round float left" data-focus onClick={onClose} />
-        <div className="float tools-right">
+        <div className="head">
+          <Glass icon="back" label="回到收藏" className="round first" data-focus onClick={onClose} />
           {isWebLink(card.link) && (
             <a className="glass round" href={card.link} target="_blank" rel="noreferrer" aria-label="查看原文"><Icon name="link" /></a>
           )}
           {canDelete && <Glass icon="trash" label="刪除" className="round danger" onClick={() => setAsking(true)} />}
         </div>
-        <div className="body under">
-          <div className="hero"><Thumb card={card} /></div>
+        <div className="body">
+          <div className="prev"><CardFace card={card} still /></div>
+          {canDelete && !card.imageUrl && <TemplateStrip card={card} onChoose={onTemplate} />}
           <div className="stats">
             <div className="ring" role="img" aria-label={`喜歡率 ${formatRatio(card)}，滑到 ${times} 次`}>
               <svg viewBox="0 0 100 100" aria-hidden="true">

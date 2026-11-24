@@ -30,7 +30,7 @@ test("the cookie is hidden from scripts and stays on this site", () => {
 test("only known, safe card fields are saved", () => {
   const card = cleanCard({ content: " a ", link: "javascript:1", tiny: 'data:image/png;base64,AA");x', likes: 99, art: { image: { x: 999 }, text: { color: "z" } } }, false, 5);
   assert.deepEqual(card, {
-    content: "a", link: "", tiny: null, createdAt: 5,
+    content: "a", link: "", tiny: null, createdAt: 5, template: null, author: "", handle: "",
     art: { image: { x: 100, y: 50, s: 100 }, text: { x: 50, y: 50, size: 9, color: "ink", plate: false } },
   });
   assert.equal(cleanCard({ content: " " }, false, 5), null);

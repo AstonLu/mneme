@@ -1,7 +1,9 @@
+import { cleanAvatar } from "../src/domain/avatars.js";
 import { recordSwipe } from "../src/domain/rank.js";
+import { cleanTemplate } from "../src/domain/templates.js";
 import { cleanCard } from "./cards.js";
 import { cleanCode, makePass, passCookie, passIsValid, passPerson, readPass } from "./code.js";
-import { addPerson, listPeople, personByCode, personById, removePerson, setCanDelete } from "./people.js";
+import { addPerson, avatarOf, listPeople, personByCode, personById, removePerson, setAvatar, setCanDelete } from "./people.js";
 
 const MAX_IMAGE = 10 * 1024 * 1024;
 const TYPES = ["image/jpeg", "image/png"];
@@ -83,6 +85,20 @@ async function swipeCard(id, person, request, env) {
   return reply(409);
 }
 
+async function changeTemplate(id, request, env) {
+  const template = cleanTemplate((await request.json().catch(() => ({})))?.template);
+  if (!template) return reply(400);
+  const { meta } = await env.DB.prepare("UPDATE cards SET data = json_set(data, '$.template', ?) WHERE id = ?").bind(template, id).run();
+  return reply(meta.changes ? 200 : 404);
+}
+
+async function changeAvatar(person, request, env) {
+  const avatar = cleanAvatar((await request.json().catch(() => ({})))?.avatar);
+  if (!avatar) return reply(400);
+  await setAvatar(env, person, avatar);
+  return reply(200);
+}
+
 async function deleteCard(id, env) {
   const [{ results: [row] }] = await env.DB.batch([
     env.DB.prepare("DELETE FROM cards WHERE id = ? RETURNING image").bind(id),
@@ -123,11 +139,13 @@ async function handle(request, env) {
       "SELECT c.id, c.data, c.image, s.data AS mine FROM cards c LEFT JOIN stats s ON s.card = c.id AND s.person = ?",
     ).bind(person.id).all();
     const { code, owner, canDelete } = person;
-    return reply(200, { me: { code, owner, canDelete }, cards: results.map(toCard) });
+    return reply(200, { me: { code, owner, canDelete, avatar: await avatarOf(env, person) }, cards: results.map(toCard) });
   }
   if (kind === "cards" && !id && request.method === "POST") return addCard(request, env);
   if (kind === "cards" && id && action === "swipe" && request.method === "POST") return swipeCard(id, person.id, request, env);
   if (kind === "cards" && id && !action && request.method === "DELETE") return person.canDelete ? deleteCard(id, env) : reply(403);
+  if (kind === "cards" && id && !action && request.method === "PATCH") return person.canDelete ? changeTemplate(id, request, env) : reply(403);
+  if (kind === "me" && !id && request.method === "PATCH") return changeAvatar(person, request, env);
   if (kind === "images" && id && request.method === "GET") return getImage(id, env);
   return reply(404);
 }
